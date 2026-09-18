@@ -3,8 +3,8 @@
 Release rule: production is not PASS until every required gate has direct evidence from the committed release candidate.
 
 ## Source and provenance
-- [ ] Clean Git baseline committed from verified Batch 14/15 state.
-- [ ] Git author identity explicitly configured by repository owner.
+- [x] Clean Git baseline committed from verified Batch 14/15 state (`22f3b368396385f1533b356f9a3b6e22efc75d3b`).
+- [x] Git author identity explicitly configured by repository owner (`jbmodularcabinet-bot <jb.modularcabinet@gmail.com>`).
 - [ ] Remote repository connected.
 - [ ] Protected default branch / review policy configured.
 - [ ] Release candidate tag created after regression PASS.

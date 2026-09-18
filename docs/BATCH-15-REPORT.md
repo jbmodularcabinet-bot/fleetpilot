@@ -37,7 +37,10 @@ The offline reconnect/service-worker sync path was stabilized without weakening 
 Verification after the fix: TypeScript PASS, ESLint PASS, targeted offline-status unit tests 2/2 PASS, and the previously flaky two-tab reconnect test PASSed 5/5 consecutively under production-smoke configuration. A fresh-fixture full Playwright run then completed **37/37 PASS continuously** in 7.2 minutes. No assertion, test expectation, or timeout was relaxed.
 
 ## Local closure
-Current local classification: CONDITIONAL PASS. Migration roundtrip is PASS; frontend/typecheck/lint/build are PASS; browser regression is now a clean 37/37 continuous PASS; backend evidence remains 370 continuous + the exact final case isolated PASS after the transient local embedded-PostgreSQL SSL-upgrade interruption. No production deployment, remote CI, Docker, public staging, monitoring, physical-device, or independent-security gate is claimed.
+Current local classification: CONDITIONAL PASS. All local automated regression gates are now clean: migration roundtrip PASS; frontend/typecheck/lint/build PASS; browser regression 37/37 continuous PASS; backend regression 371/371 continuous PASS in 8m 51s. Production release remains blocked by remote CI, Docker, public staging, monitoring, physical-device, storage/recovery, and independent-security evidence.
+
+## Git provenance
+Local source-control provenance is now established. Repository branch is `main`; baseline commit `22f3b368396385f1533b356f9a3b6e22efc75d3b` was authored as `jbmodularcabinet-bot <jb.modularcabinet@gmail.com>` after the complete local automated baseline passed. Secrets/runtime artifacts remain excluded by `.gitignore`, and the accidental Batch 15 debug copy was removed before commit.
 
 ## Next controlled gate
-Obtain a clean continuous 371/371 backend run against a fresh CI-style PostgreSQL service, then establish source-control/remote-CI and deployment/device evidence. Do not create a release tag or claim production PASS until those and the external release gates have direct evidence.
+Connect the GitHub remote and reproduce the committed baseline through `.github/workflows/foundation.yml`. Then configure default-branch protection/review policy and continue to Docker/staging/monitoring/device/security release evidence. Do not claim production PASS until those external gates have direct evidence.
