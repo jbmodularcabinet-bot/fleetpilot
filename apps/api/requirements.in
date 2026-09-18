@@ -1,0 +1,16 @@
+fastapi[standard]
+fastapi-users[sqlalchemy]
+fastapi-users-db-sqlalchemy
+sqlalchemy[asyncio]
+asyncpg
+alembic
+pydantic-settings
+pycountry
+tzdata
+pytest
+pytest-asyncio
+httpx
+ruff
+
+Pillow
+boto3

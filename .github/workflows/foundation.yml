@@ -1,0 +1,65 @@
+name: Foundation checks
+on: [push, pull_request]
+jobs:
+  foundation:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:18.4
+        env:
+          POSTGRES_PASSWORD: synthetic-ci-owner-only
+          POSTGRES_DB: fleetpilot_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_URL: postgresql+asyncpg://fleetpilot_app:synthetic-ci-runtime-only@127.0.0.1:5432/fleetpilot_test
+      MIGRATION_DATABASE_URL: postgresql+asyncpg://postgres:synthetic-ci-owner-only@127.0.0.1:5432/fleetpilot_test
+      ENVIRONMENT: test
+      WEB_ORIGIN: http://localhost:3000
+      API_INTERNAL_URL: http://127.0.0.1:8100
+      DEMO_PASSWORD: synthetic-ci-demo-password-only
+      LOGIN_LIMIT: "100"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: "24", cache: npm }
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: npm ci
+      - run: python -m venv .venv && .venv/bin/python -m pip install -r apps/api/requirements.txt
+      - name: Isolated database and test configuration
+        env:
+          PGPASSWORD: synthetic-ci-owner-only
+        run: |
+          psql -h 127.0.0.1 -U postgres -d fleetpilot_test -v ON_ERROR_STOP=1 <<'SQL'
+          CREATE ROLE fleetpilot_app LOGIN PASSWORD 'synthetic-ci-runtime-only' NOSUPERUSER NOBYPASSRLS;
+          REVOKE CREATE ON SCHEMA public FROM PUBLIC;
+          GRANT USAGE ON SCHEMA public TO fleetpilot_app;
+          ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO fleetpilot_app;
+          SQL
+          mkdir -p .runtime
+          printf 'DATABASE_URL=%s\nMIGRATION_DATABASE_URL=%s\nENVIRONMENT=test\nWEB_ORIGIN=%s\nDEMO_PASSWORD=%s\nLOGIN_LIMIT=100\n' "$DATABASE_URL" "$MIGRATION_DATABASE_URL" "$WEB_ORIGIN" "$DEMO_PASSWORD" > .runtime/test.env
+      - run: .venv/bin/python scripts/api-task.py --test alembic upgrade head
+      - name: Real private S3 test gateway
+        run: |
+          curl -fsSL https://github.com/versity/versitygw/releases/download/v1.8.0/versitygw_v1.8.0_Linux_x86_64.tar.gz -o .runtime/gateway.tar.gz
+          curl -fsSL https://github.com/versity/versitygw/releases/download/v1.8.0/checksums.txt -o .runtime/checksums.txt
+          cd .runtime
+          grep 'versitygw_v1.8.0_Linux_x86_64.tar.gz' checksums.txt | sed 's/versitygw_v1.8.0_Linux_x86_64.tar.gz/gateway.tar.gz/' | sha256sum -c -
+          tar xzf gateway.tar.gz
+          mkdir -p s3-data
+          printf '{"access":"synthetic-ci-s3","secret":"synthetic-ci-s3-secret-only"}' > s3-test.json
+          ROOT_ACCESS_KEY=synthetic-ci-s3 ROOT_SECRET_KEY=synthetic-ci-s3-secret-only ./versitygw_v1.8.0_Linux_x86_64/versitygw --port 127.0.0.1:9000 posix "$PWD/s3-data" > gateway.log 2>&1 &
+      - run: .venv/bin/python scripts/api-task.py --test alembic downgrade 0004_proof_of_delivery
+      - run: .venv/bin/python scripts/api-task.py --test alembic upgrade head
+      - run: .venv/bin/python scripts/api-task.py --test pytest -q
+      - run: .venv/bin/python -m pip check
+      - run: npm ls --all --omit=optional
+      - run: .venv/bin/python scripts/verify-design-assets.py
+      - run: .venv/bin/python -m ruff check apps/api scripts
+      - run: npm run typecheck && npm run lint && npm test && npm run build
+      - run: .venv/bin/python scripts/api-task.py --test tests.reset_e2e
+      - run: npx playwright install --with-deps chromium
+      - run: FLEETPILOT_PRODUCTION_SMOKE=1 npm run test:e2e

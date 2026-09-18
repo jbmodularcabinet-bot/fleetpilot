@@ -1,0 +1,14 @@
+{
+  "name": "@fleetpilot/ui",
+  "version": "0.2.0",
+  "private": true,
+  "exports": {
+    ".": "./index.tsx",
+    "./tokens.css": "./tokens.css"
+  },
+  "peerDependencies": {
+    "react": "^19.2.0",
+    "next": "^16.3.5",
+    "lucide-react": "^0.577.0"
+  }
+}

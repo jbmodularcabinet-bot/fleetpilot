@@ -1,0 +1,27 @@
+{
+  "name": "fleetpilot",
+  "version": "0.2.0",
+  "private": true,
+  "workspaces": [
+    "apps/web",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "node scripts/build-driver-worker.mjs && npm run dev --workspace @fleetpilot/web",
+    "build": "node scripts/build-driver-worker.mjs && npm run build --workspace @fleetpilot/web",
+    "typecheck": "npm run typecheck --workspace @fleetpilot/web && tsc --noEmit -p tsconfig.tests.json",
+    "lint": "npm run lint --workspace @fleetpilot/web",
+    "test": "npm run test --workspace @fleetpilot/web",
+    "test:e2e": "playwright test",
+    "format": "prettier --write apps/web packages tests scripts docs README.md",
+    "db:local": "node scripts/local-postgres.mjs"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.58.0",
+    "embedded-postgres": "^18.4.0-beta.17",
+    "prettier": "^3.8.0"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  }
+}

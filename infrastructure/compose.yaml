@@ -1,0 +1,20 @@
+# Database alternative to npm run db:local. Never run both on port 54329.
+services:
+  db:
+    image: postgres:18.4
+    environment:
+      POSTGRES_DB: fleetpilot
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set a database owner password}
+      APP_DATABASE_PASSWORD: ${APP_DATABASE_PASSWORD:?Set a separate runtime password}
+    ports:
+      - "127.0.0.1:54329:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql
+      - ./init-db.sh:/docker-entrypoint-initdb.d/10-fleetpilot.sh:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d fleetpilot"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+volumes:
+  postgres_data:

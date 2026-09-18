@@ -1,0 +1,82 @@
+{
+  "schema_version": 1,
+  "asset_set": "FleetPilot approved visual references",
+  "version": "v1",
+  "status": "LOCKED_REFERENCE_BASELINE",
+  "authority": "User request: Analyze this assets, save and lock",
+  "change_policy": "Preserve originals byte-for-byte. User-authorized revisions become a new version; do not overwrite v1. Visual references do not authorize product feature activation.",
+  "assets": [
+    {
+      "id": "FP-REF-01",
+      "source_name": "Photo 1.jpg",
+      "source_attachment_name": "1-Photo-1.jpg",
+      "file": "01-brand-identity.jpg",
+      "role": "Primary brand identity reference",
+      "format": "JPEG",
+      "width": 1280,
+      "height": 960,
+      "bytes": 312248,
+      "sha256": "38e07dbdae83168dce8499ba97362b84d0d68f64aab922f359ccc0f7bde976e8"
+    },
+    {
+      "id": "FP-REF-02",
+      "source_name": "Photo 2.jpg",
+      "source_attachment_name": "2-Photo-2.jpg",
+      "file": "02-owner-dashboard.jpg",
+      "role": "Owner dashboard and responsive visual reference",
+      "format": "JPEG",
+      "width": 1280,
+      "height": 853,
+      "bytes": 269796,
+      "sha256": "d43cee2e13c683e3116c074966c255ac030cf5cd046ae561bd11de522f0f85f7"
+    },
+    {
+      "id": "FP-REF-03",
+      "source_name": "Photo 3.jpg",
+      "source_attachment_name": "3-Photo-3.jpg",
+      "file": "03-product-design-board-a.jpg",
+      "role": "Product design system and future screen reference",
+      "format": "JPEG",
+      "width": 1280,
+      "height": 960,
+      "bytes": 343231,
+      "sha256": "0e6d13e7f9a308e2993fdcb59e82b4872ce6221a9bb730f910b519c043d9ca33"
+    },
+    {
+      "id": "FP-REF-04",
+      "source_name": "Photo 4.jpg",
+      "source_attachment_name": "4-Photo-4.jpg",
+      "file": "04-driver-app.jpg",
+      "role": "Primary driver visual and interaction reference",
+      "format": "JPEG",
+      "width": 1280,
+      "height": 1169,
+      "bytes": 360268,
+      "sha256": "a8179d7c3ab2d3f371df7640407d1b0b837ef4e1e16b998a050f7074ce156a15"
+    },
+    {
+      "id": "FP-REF-05",
+      "source_name": "Photo 5.jpg",
+      "source_attachment_name": "5-Photo-5.jpg",
+      "file": "05-product-design-board-b.jpg",
+      "role": "Companion product design board; preserve separately",
+      "format": "JPEG",
+      "width": 1280,
+      "height": 960,
+      "bytes": 348905,
+      "sha256": "e1087f2acc7a6b5d71c4fd9b91b6b9b67ccc6082406736ead81dcb63c5dd1e8b"
+    },
+    {
+      "id": "FP-REF-06",
+      "source_name": "Photo 6.jpg",
+      "source_attachment_name": "6-Photo-6.jpg",
+      "file": "06-dark-profitability-concept.jpg",
+      "role": "Alternate dark profitability concept; not primary brand authority",
+      "format": "JPEG",
+      "width": 1280,
+      "height": 853,
+      "bytes": 219754,
+      "sha256": "1a3fe6b2abebcf56f626abd48221894aa69b1c3eec54d82645b2c3faa99d9132"
+    }
+  ]
+}

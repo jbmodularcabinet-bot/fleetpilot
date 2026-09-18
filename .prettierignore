@@ -1,0 +1,10 @@
+node_modules
+.venv
+.runtime
+**/.next
+**/.next-e2e
+**/next-env.d.ts
+apps/web/AGENTS.md
+apps/web/CLAUDE.md
+docs/PHASE-0-REPOSITORY-AUDIT.md
+package-lock.json
