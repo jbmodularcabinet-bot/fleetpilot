@@ -42,5 +42,8 @@ Current local classification: CONDITIONAL PASS. All local automated regression g
 ## Git provenance
 Local source-control provenance is now established. Repository branch is `main`; baseline commit `22f3b368396385f1533b356f9a3b6e22efc75d3b` was authored as `jbmodularcabinet-bot <jb.modularcabinet@gmail.com>` after the complete local automated baseline passed. Secrets/runtime artifacts remain excluded by `.gitignore`, and the accidental Batch 15 debug copy was removed before commit.
 
+## Remote CI baseline
+GitHub remote is connected at `jbmodularcabinet-bot/fleetpilot`. Initial remote CI exposed a Linux-only Playwright harness defect: several tests hardcoded `.venv/Scripts/python.exe`. Commit `25199581c505f62c68602dc38b7b36882063aceb` changed those test subprocess paths to use `.venv/bin/python` on non-Windows while preserving Windows behavior. Local TypeScript and ESLint passed, a representative previously failing Playwright profitability spec passed 1/1, and the subsequent GitHub Actions `Foundation checks` run completed with status `Success` against the updated commit.
+
 ## Next controlled gate
-Connect the GitHub remote and reproduce the committed baseline through `.github/workflows/foundation.yml`. Then configure default-branch protection/review policy and continue to Docker/staging/monitoring/device/security release evidence. Do not claim production PASS until those external gates have direct evidence.
+Configure required-check branch protection for `main`, then complete Docker image/runtime verification. Current workstation prerequisites: Docker is not installed; WSL is not installed; CPU virtualization is enabled. After Docker verification, continue to HTTPS staging, storage/IAM, monitoring, recovery, physical-device, deployed-isolation, and independent-security evidence.

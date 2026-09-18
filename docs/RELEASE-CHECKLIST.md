@@ -5,7 +5,7 @@ Release rule: production is not PASS until every required gate has direct eviden
 ## Source and provenance
 - [x] Clean Git baseline committed from verified Batch 14/15 state (`22f3b368396385f1533b356f9a3b6e22efc75d3b`).
 - [x] Git author identity explicitly configured by repository owner (`jbmodularcabinet-bot <jb.modularcabinet@gmail.com>`).
-- [ ] Remote repository connected.
+- [x] Remote repository connected (`https://github.com/jbmodularcabinet-bot/fleetpilot.git`, `main` tracking `origin/main`).
 - [ ] Protected default branch / review policy configured.
 - [ ] Release candidate tag created after regression PASS.
 
@@ -17,7 +17,7 @@ Release rule: production is not PASS until every required gate has direct eviden
 - [x] Full frontend regression passes from current Batch 15 candidate (54/54).
 - [x] Full browser regression passes continuously from current Batch 15 candidate (37/37 PASS after offline reconnect stabilization; targeted reconnect stress 5/5 PASS).
 - [x] Migration forward / rollback / reapply passes from current head (0012 → 0011 → 0012).
-- [ ] Remote CI reproduces the complete committed verification suite.
+- [x] Remote CI reproduces the committed verification suite (GitHub Actions `Foundation checks` PASS on commit `25199581c505f62c68602dc38b7b36882063aceb`).
 
 ## Deployment and operations
 - [ ] Production Docker images build and run successfully.
