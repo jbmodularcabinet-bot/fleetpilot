@@ -20,8 +20,8 @@ Release rule: production is not PASS until every required gate has direct eviden
 - [x] Remote CI reproduces the committed verification suite (GitHub Actions `Foundation checks` PASS on commit `25199581c505f62c68602dc38b7b36882063aceb`).
 
 ## Deployment and operations
-- [ ] Production Docker images build and run successfully.
-- [ ] Image digests recorded and pinned for release.
+- [x] Production Docker images build and run successfully (API readiness 200; web login 200; web→API unauthenticated proxy 401 on clean Docker PostgreSQL 18 network).
+- [ ] Registry image digests recorded and pinned for release. Local content-addressed image IDs recorded: API `sha256:0dcf3dad6f85f0825b9ec8f953dfc070bc5323bfab2aa39621407ebd5a4f5caa`; web `sha256:26a3afe509ccbd81536dd7b4a8d873e8c3d88f6c26d5c5c861c08801acdae020`.
 - [ ] Public HTTPS staging frontend/API verified.
 - [ ] Production private object storage/IAM verified.
 - [ ] External monitoring and alert delivery verified.
