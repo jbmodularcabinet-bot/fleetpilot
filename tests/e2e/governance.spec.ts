@@ -10,7 +10,7 @@ test("cash settlement golden, partial balance and post-approval correction retai
   test.setTimeout(180000);
   const fixture = JSON.parse(
     execFileSync(
-      resolve(".venv/Scripts/python.exe"),
+      resolve(process.platform === "win32" ? ".venv/Scripts/python.exe" : ".venv/bin/python"),
       ["scripts/api-task.py", "--test", "tests.e2e_governance"],
       { encoding: "utf8", timeout: 60000 },
     ),

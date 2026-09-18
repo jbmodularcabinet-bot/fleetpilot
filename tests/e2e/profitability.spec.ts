@@ -10,7 +10,7 @@ test("profitability golden: reviewed contribution, immutable corrections, mainte
   test.setTimeout(150000);
   const fixture = JSON.parse(
     execFileSync(
-      resolve(".venv/Scripts/python.exe"),
+      resolve(process.platform === "win32" ? ".venv/Scripts/python.exe" : ".venv/bin/python"),
       ["scripts/api-task.py", "--test", "tests.e2e_profitability"],
       { encoding: "utf8", timeout: 60000 },
     ),

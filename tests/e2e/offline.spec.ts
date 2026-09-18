@@ -11,7 +11,7 @@ import { expectLockedV1 } from "./design-v1";
 
 function verifyOriginals() {
   execFileSync(
-    resolve(".venv/Scripts/python.exe"),
+    resolve(process.platform === "win32" ? ".venv/Scripts/python.exe" : ".venv/bin/python"),
     ["scripts/verify-design-assets.py"],
     {
       encoding: "utf8",
@@ -49,7 +49,7 @@ const actions = [
 function provision(label: string): Fixture {
   return JSON.parse(
     execFileSync(
-      resolve(".venv/Scripts/python.exe"),
+      resolve(process.platform === "win32" ? ".venv/Scripts/python.exe" : ".venv/bin/python"),
       ["scripts/api-task.py", "--test", "tests.e2e_setup", label, "--driver"],
       { encoding: "utf8", timeout: 60000 },
     ),
