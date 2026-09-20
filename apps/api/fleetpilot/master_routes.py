@@ -125,7 +125,7 @@ def resource_routes(
 
     async def listing(
         ctx: TenantContext = Depends(tenant),
-        db: AsyncSession = Depends(get_db),
+        db: AsyncSession = Depends(get_db, scope="function"),
         search: str = Query("", max_length=160),
         status: str | None = None,
         sort: str = "created_at",
@@ -167,7 +167,7 @@ def resource_routes(
     async def detail(
         identifier: uuid.UUID,
         ctx: TenantContext = Depends(tenant),
-        db: AsyncSession = Depends(get_db),
+        db: AsyncSession = Depends(get_db, scope="function"),
     ):
         ctx.require(f"{domain}.read")
         return output_schema.model_validate(await find(db, ctx, model, identifier))
@@ -175,7 +175,7 @@ def resource_routes(
     async def create(
         payload: input_schema,
         ctx: TenantContext = Depends(tenant),
-        db: AsyncSession = Depends(get_db),
+        db: AsyncSession = Depends(get_db, scope="function"),
     ):
         await write_lock(db, ctx, f"{domain}.create")
         if model is Driver:
@@ -204,7 +204,7 @@ def resource_routes(
         identifier: uuid.UUID,
         payload: input_schema,
         ctx: TenantContext = Depends(tenant),
-        db: AsyncSession = Depends(get_db),
+        db: AsyncSession = Depends(get_db, scope="function"),
     ):
         await write_lock(db, ctx, f"{domain}.update")
         row = await find(db, ctx, model, identifier)
@@ -282,14 +282,14 @@ def resource_routes(
     async def deactivate(
         identifier: uuid.UUID,
         ctx: TenantContext = Depends(tenant),
-        db: AsyncSession = Depends(get_db),
+        db: AsyncSession = Depends(get_db, scope="function"),
     ):
         return await change_state(identifier, False, ctx, db)
 
     async def reactivate(
         identifier: uuid.UUID,
         ctx: TenantContext = Depends(tenant),
-        db: AsyncSession = Depends(get_db),
+        db: AsyncSession = Depends(get_db, scope="function"),
     ):
         return await change_state(identifier, True, ctx, db)
 
@@ -362,7 +362,7 @@ async def assignment_view(db, ctx, row):
 @router.get("/vehicle-driver-assignments")
 async def list_assignments(
     ctx: TenantContext = Depends(tenant),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
     vehicle_id: uuid.UUID | None = None,
     driver_id: uuid.UUID | None = None,
     is_current: bool | None = None,
@@ -415,7 +415,7 @@ async def list_assignments(
 
 @router.get("/vehicle-driver-assignments/{identifier}")
 async def read_assignment(
-    identifier: uuid.UUID, ctx: TenantContext = Depends(tenant), db: AsyncSession = Depends(get_db)
+    identifier: uuid.UUID, ctx: TenantContext = Depends(tenant), db: AsyncSession = Depends(get_db, scope="function")
 ):
     ctx.require("assignments.read")
     return await assignment_view(db, ctx, await find(db, ctx, Assignment, identifier))
@@ -425,7 +425,7 @@ async def read_assignment(
 async def assign_driver(
     payload: AssignmentInput,
     ctx: TenantContext = Depends(tenant),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     await write_lock(db, ctx, "assignments.manage")
     require_current(ctx, "vehicles.assign_driver")
@@ -460,7 +460,7 @@ async def assign_driver(
 
 @router.post("/vehicle-driver-assignments/{identifier}/unassign")
 async def unassign_driver(
-    identifier: uuid.UUID, ctx: TenantContext = Depends(tenant), db: AsyncSession = Depends(get_db)
+    identifier: uuid.UUID, ctx: TenantContext = Depends(tenant), db: AsyncSession = Depends(get_db, scope="function")
 ):
     await write_lock(db, ctx, "assignments.manage")
     require_current(ctx, "vehicles.assign_driver")
@@ -489,7 +489,7 @@ async def unassign_driver(
 
 @router.get("/driver-profile")
 async def own_driver_profile(
-    ctx: TenantContext = Depends(tenant), db: AsyncSession = Depends(get_db)
+    ctx: TenantContext = Depends(tenant), db: AsyncSession = Depends(get_db, scope="function")
 ):
     ctx.require("driver_app.view")
     profile = await db.scalar(scoped(Driver, ctx).where(Driver.user_id == ctx.user.id))

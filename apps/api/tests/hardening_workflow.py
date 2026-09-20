@@ -58,6 +58,10 @@ async def verify(client, state):
             and hashlib.sha256(receipt.content).hexdigest() == state["receipt"]["checksum"]
         )
     timings = {}
+    if state.get("governance"):
+        from .governance_recovery import verify as verify_governance
+
+        await verify_governance(client, state)
     for path in [
         "/customers",
         "/vehicles",
@@ -181,6 +185,10 @@ async def main():
                 from .maintenance_recovery import create as create_maintenance
 
                 expense_state["maintenance"] = await create_maintenance(client, rows, trip)
+            if os.environ.get("DRILL_BATCH15") == "1":
+                from .governance_recovery import create as create_governance
+
+                expense_state["governance"] = await create_governance(client, trip, expense_state)
             state_file.write_text(
                 json.dumps(
                     {

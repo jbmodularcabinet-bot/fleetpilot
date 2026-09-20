@@ -4,6 +4,7 @@ import asyncio
 import contextlib
 import io
 import json
+import sys
 
 from httpx import ASGITransport, AsyncClient
 
@@ -50,9 +51,10 @@ async def main():
                 t["version"] = r.json()["result"]["trip_version"]
                 e = r.json()["result"]["expense"]["id"]
                 ids.append(e)
-                r = await post(c, f"/expenses/{e}/review", dict(expected_version=t["version"]))
-                assert r.status_code == 200, r.text
-                t["version"] = r.json()["result"]["trip_version"]
+                if "--legacy" not in sys.argv:
+                    r = await post(c, f"/expenses/{e}/review", dict(expected_version=t["version"]))
+                    assert r.status_code == 200, r.text
+                    t["version"] = r.json()["result"]["trip_version"]
             for action in list(ACTIONS)[1:]:
                 t = await act(c, t, action)
             r = await c.post(

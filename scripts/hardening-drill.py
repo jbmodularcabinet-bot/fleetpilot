@@ -84,7 +84,7 @@ async def main():
     directory = (
         ROOT
         / ".runtime"
-        / f"batch{12 if os.environ.get('DRILL_BATCH12') else 9 if os.environ.get('DRILL_BATCH9') else 6}-drill-{suffix}"
+        / f"batch{15 if os.environ.get('DRILL_BATCH15') else 12 if os.environ.get('DRILL_BATCH12') else 9 if os.environ.get('DRILL_BATCH9') else 6}-drill-{suffix}"
     )
     directory.mkdir()
     env = {**os.environ, **dotenv_values(ROOT / ".runtime/test.env")}
@@ -205,6 +205,7 @@ async def main():
             "cash_advances",
             "cash_advance_settlement_entries",
             "trip_financial_review_events",
+            "legacy_expense_review_events",
             "trip_expenses",
             "expense_revisions",
             "expense_evidence",
@@ -284,7 +285,7 @@ async def main():
     rls = await db.fetch(
         "SELECT relname,relforcerowsecurity FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='public' AND relrowsecurity ORDER BY relname"
     )
-    assert len(rls) == 31 and all(row["relforcerowsecurity"] for row in rls)
+    assert len(rls) == 32 and all(row["relforcerowsecurity"] for row in rls)
     # A snapshot can contain sessions revoked after backup; never revive them.
     await db.execute("DELETE FROM auth_sessions")
     assert await db.fetchval("SELECT count(*) FROM auth_sessions") == 0
