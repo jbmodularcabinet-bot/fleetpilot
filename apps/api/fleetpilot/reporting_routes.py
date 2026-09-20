@@ -10,10 +10,16 @@ from .audit import record
 from .delivery_routes import Context, Database
 from .master_routes import write_lock
 from .reporting_contract import REPORTS, ReportFilters, ReportingPolicy
+from .reporting_demo import demo_context
 from .reporting_exports import TITLES, export_report
 from .reporting_service import build_report, policy_for, reporting_access
 
 router = APIRouter(prefix="/api/v1", tags=["Owner intelligence and contribution reports"])
+
+
+@router.get("/reports/demo-context")
+async def get_demo_context(ctx: Context, db: Database):
+    return await demo_context(db, ctx)
 
 
 @router.get("/reports/policy")

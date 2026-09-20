@@ -186,9 +186,9 @@ export function ReportingWorkspace({
         <div className="reporting-demo-banner" role="note">
           <strong>SYNTHETIC VALIDATION DATA</strong>
           <span>
-            Demonstration only. September 21–24, 2026 examples follow their
-            scheduled pickup dates; they are not verified deliveries completed
-            today.
+            Sample records are loaded for this demo workspace. September 21–24,
+            2026 examples follow their scheduled pickup dates; they are not
+            verified deliveries completed today.
           </span>
         </div>
       )}

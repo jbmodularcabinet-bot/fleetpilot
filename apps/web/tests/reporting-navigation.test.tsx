@@ -1,3 +1,9 @@
+vi.mock("@/lib/reporting-server", () => ({
+  reportingEntryFilters: async (
+    _identity: unknown,
+    filters: Record<string, string>,
+  ) => filters,
+}));
 import { describe, expect, it, vi } from "vitest";
 import Dashboard from "@/app/(owner)/dashboard/page";
 import Intelligence from "@/app/(owner)/intelligence/page";

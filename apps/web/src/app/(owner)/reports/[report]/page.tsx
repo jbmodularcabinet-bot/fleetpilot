@@ -1,3 +1,4 @@
+import { reportingEntryFilters } from "@/lib/reporting-server";
 import { notFound } from "next/navigation";
 import { getIdentity } from "@/lib/server";
 import { ReportingWorkspace } from "@/components/mvp1-intelligence";
@@ -18,12 +19,13 @@ export default async function Report({
   FILTER_KEYS.forEach((key) => {
     if (typeof search[key] === "string") filters[key] = search[key] as string;
   });
+  const entryFilters = await reportingEntryFilters(identity, filters);
   return (
     <ReportingWorkspace
-      key={identity.organization.id + report + JSON.stringify(filters)}
+      key={identity.organization.id + report + JSON.stringify(entryFilters)}
       identity={identity}
       reportName={report as ReportName}
-      initialFilters={filters}
+      initialFilters={entryFilters}
     />
   );
 }
