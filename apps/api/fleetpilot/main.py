@@ -25,6 +25,7 @@ from .maintenance_routes import router as maintenance_router
 from .master_routes import router as master_router
 from .rate_limits import category_for, consume
 from .rate_limits import login_windows as login_windows
+from .reporting_routes import router as reporting_router
 from .routes import router
 from .s3_storage import StorageUnavailable
 from .sync_routes import router as sync_router
@@ -207,3 +208,5 @@ async def ready():
         emit("readiness.failed")
         return JSONResponse({"status": "not_ready"}, status_code=503)
     return {"status": "ready"}
+
+app.include_router(reporting_router)
