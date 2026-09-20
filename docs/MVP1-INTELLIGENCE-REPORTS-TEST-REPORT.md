@@ -59,3 +59,9 @@ The synthetic-data disclaimer uses date-independent wording so the fixed Septemb
 A final code review found that same-report client navigation could change query parameters without remounting the report's initial filter state. Dashboard, Intelligence and report pages now key their workspace by the authorized organization and normalized filter set. Three regression tests exercise same-route trip drill-down, dashboard date changes and Intelligence financial-status changes. This is a navigation-state fix, not a financial-rule change.
 
 The final local frontend suite after the navigation fix passed 63 tests, zero failures, with TypeScript and lint passing.
+
+## Remote regression contract update
+
+The first remote Foundation run on feature commit 8948734 passed backend tests, migration forward/downgrade/reapply, dependency/static checks and production build. Its browser result was 37 passed and one failed: the original foundation test still asserted the literal placeholder "Dashboard summaries unavailable". That expectation is intentionally obsolete under this authorized feature scope.
+
+The foundation test now verifies successful reporting response, scheduled-pickup basis, fingerprint, all six dashboard metrics against canonical API values, the contribution qualification and active Intelligence/Reports navigation. Its organization-settings persistence, membership visibility, logout and protected-route assertions remain unchanged. No timeout, retry, financial assertion or permission check was removed to obtain a green result. Exact-final-commit CI must still be observed; an earlier commit's successful steps are not final-candidate CI evidence.
