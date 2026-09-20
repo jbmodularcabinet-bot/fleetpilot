@@ -15,7 +15,7 @@ export default async function Dashboard({
   });
   return (
     <ReportingWorkspace
-      key={identity.organization.id}
+      key={identity.organization.id + JSON.stringify(filters)}
       identity={identity}
       mode="dashboard"
       initialFilters={filters}

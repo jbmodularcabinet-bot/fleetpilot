@@ -15,7 +15,7 @@ export default async function Intelligence({
   });
   return (
     <ReportingWorkspace
-      key={identity.organization.id}
+      key={identity.organization.id + JSON.stringify(filters)}
       identity={identity}
       mode="intelligence"
       initialFilters={filters}

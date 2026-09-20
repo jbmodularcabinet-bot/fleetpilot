@@ -46,10 +46,16 @@ Six additional public checks passed: Secure/HttpOnly/SameSite session cookie fla
 
 Measured public HTTPS responsiveness: 20 requests, concurrency two, four-trip dataset; p50 216.63 ms, p95 507.40 ms, maximum 516.16 ms; maximum response 15,775 bytes. This includes tunnel/network/web/API forwarding. The workstation CPU is Intel Core i5-10300H, eight logical processors, shared with other development workloads. This is not the requested 1,000-trip/10,000-expense benchmark or production capacity evidence.
 
-Native WSL design verification passed all six locked original hash, size and read-only checks. A Windows invocation against the UNC projection failed its Windows-specific readonly-attribute assertion; the native WSL check verifies the Linux-owned source using its applicable permission model.
+Native WSL design verification passed all six original hash, size and manifest checks. The verifier checks the Windows readonly attribute only when that attribute is available; it does not test Linux read-only permission bits. A Windows invocation against the UNC projection failed its Windows-specific readonly-attribute assertion. Asset-byte preservation is verified; cross-platform read-only enforcement is not certified.
 
 ## Environment rerun completed
 
 All ten affected backend checks passed in 18.22 seconds after applying the existing private S3 test configuration and an explicit owned temporary directory. Across the full invocation and that targeted rerun, all 460 distinct backend cases have an executed pass; no unresolved case remains in that coverage set. The initial 450-pass/9-skip/1-setup-error invocation remains preserved, and a second uninterrupted 460-case local invocation was not run. Application assertions and database/security guards were not weakened.
 
 The synthetic-data disclaimer uses date-independent wording so the fixed September validation period will not later be mislabeled as future deliveries or today's completed deliveries.
+
+## Same-route filter navigation
+
+A final code review found that same-report client navigation could change query parameters without remounting the report's initial filter state. Dashboard, Intelligence and report pages now key their workspace by the authorized organization and normalized filter set. Three regression tests exercise same-route trip drill-down, dashboard date changes and Intelligence financial-status changes. This is a navigation-state fix, not a financial-rule change.
+
+The final local frontend suite after the navigation fix passed 63 tests, zero failures, with TypeScript and lint passing.

@@ -20,7 +20,7 @@ export default async function Report({
   });
   return (
     <ReportingWorkspace
-      key={identity.organization.id + report}
+      key={identity.organization.id + report + JSON.stringify(filters)}
       identity={identity}
       reportName={report as ReportName}
       initialFilters={filters}

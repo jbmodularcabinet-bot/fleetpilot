@@ -29,7 +29,7 @@ All 342 starting source files were preserved and hash-verified. The 24 pre-exist
 | Tenant/RBAC checks | PASS in executed runtime/integration/public tests; not independent security certification |
 | Export security | PASS in executed formula-text, HTML, authorization and download checks; spreadsheet caveats disclosed |
 | Browser/mobile | PASS — 16 local and 16 public runs of the same workflows; six extra public security/performance checks |
-| Frontend regression | PASS — 60 distinct tests |
+| Frontend regression | PASS — 63 distinct tests, including same-route filter-navigation coverage |
 | TypeScript/lint/build | PASS at the recorded web candidate check |
 | Design preservation | PASS — six locked originals verified natively in WSL, plus reviewed desktop/mobile screenshots |
 | Backend coverage | PASS — 460 distinct cases verified across the full invocation and ten-case environment rerun; initial failures retained |
