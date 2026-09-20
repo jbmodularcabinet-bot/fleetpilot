@@ -2,7 +2,7 @@
 
 ## Locked reference baseline
 
-The six newly supplied visual assets are saved and locked as v1. See [DESIGN-ASSET-LOCK.md](DESIGN-ASSET-LOCK.md) for analysis, palette, reference precedence and conflicts, and the [asset index](../assets/design-references/README.md) for originals and checksum verification. The primary brand remains the mint F/road mark and light owner workspace; the dark profitability board is retained as an alternate concept. Locking these references does not activate pictured features or replace verified lifecycle/security rules.
+The six newly supplied visual assets are saved and locked as v1. See [DESIGN-ASSET-LOCK.md](DESIGN-ASSET-LOCK.md) for analysis, palette, reference precedence and conflicts, the [FleetPilot UI Source of Truth](FLEETPILOT-UI-SOURCE-OF-TRUTH.md) for implementation precedence and Intelligence/Reports integration rules, and the [asset index](../assets/design-references/README.md) for originals and checksum verification. The primary brand remains the mint F/road mark and light owner workspace; the dark profitability board is retained as an alternate concept. Locking these references does not activate pictured features or replace verified lifecycle/security rules.
 
 ## Historical Batch 2 implementation notes
 
