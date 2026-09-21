@@ -14,7 +14,7 @@ import {
   StatusBadge,
   DriverPrimaryAction,
 } from "@fleetpilot/ui";
-import { can } from "@fleetpilot/auth";
+import { can, isClientDemo } from "@fleetpilot/auth";
 import type { Identity } from "@fleetpilot/types";
 import { queueTransition, sync } from "@/lib/offline";
 import { request } from "@/lib/client";
@@ -890,7 +890,11 @@ export function TripDetail({
         </Card>
         <div className="trip-side">
           <Card title="Next action" className="master-card">
-            {trip.next_action ? (
+            {trip.next_action &&
+            can(
+              identity,
+              own ? "driver_trip.transition_own" : "trips.transition",
+            ) ? (
               <>
                 <p className="small muted">
                   Current milestone: {human(trip.current_milestone)}
@@ -1078,7 +1082,9 @@ export function TripDetail({
         can(identity, "expenses.read") && (
           <FinancialPanel trip={trip} identity={identity} revision={revision} />
         )}
-      {!own && <TripAssignmentHistory id={id} revision={revision} />}
+      {!own && !isClientDemo(identity) && (
+        <TripAssignmentHistory id={id} revision={revision} />
+      )}
       {!own && can(identity, "audit.read") && (
         <TripAudit id={id} revision={revision} />
       )}

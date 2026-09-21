@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from .audit import record
 from .auth import current_user
+from .client_demo_access import CLIENT_DEMO_ACCESS_PROFILE, is_client_demo_membership
 from .config import get_settings
 from .db import get_db
 from .models import AuditLog, Membership, Organization, User
@@ -26,12 +27,20 @@ def organization_dict(org: Organization) -> dict:
 
 
 @router.get("/me")
-async def me(ctx: TenantContext = Depends(tenant), db: AsyncSession = Depends(get_db, scope="function")):
+async def me(
+    ctx: TenantContext = Depends(tenant), db: AsyncSession = Depends(get_db, scope="function")
+):
     organizations = [organization_dict(org) for _, org in await memberships_for(db, ctx.user)]
     return {
         "user": {"id": str(ctx.user.id), "name": ctx.user.name, "email": ctx.user.email},
         "organization": organization_dict(ctx.organization),
-        "membership": {"id": str(ctx.membership.id), "role": ctx.membership.role},
+        "membership": {
+            "id": str(ctx.membership.id),
+            "role": ctx.membership.role,
+            "access_profile": CLIENT_DEMO_ACCESS_PROFILE
+            if is_client_demo_membership(ctx.membership.permissions_json)
+            else None,
+        },
         "permissions": sorted(ctx.permissions),
         "organizations": organizations,
     }

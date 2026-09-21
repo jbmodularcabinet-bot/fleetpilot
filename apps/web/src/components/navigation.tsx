@@ -24,7 +24,7 @@ import {
   X,
 } from "lucide-react";
 import { FleetPilotLogo, StatusBadge } from "@fleetpilot/ui";
-import { can, homeFor } from "@fleetpilot/auth";
+import { can, homeFor, isClientDemo } from "@fleetpilot/auth";
 import type { Identity } from "@fleetpilot/types";
 import { beforeAccountExit, clearOffline } from "@/lib/offline";
 import { request } from "@/lib/client";
@@ -184,14 +184,16 @@ export function Sidebar({ identity }: { identity: Identity }) {
               </button>
             ),
           )}
-          <Link
-            className={`nav-item ${path.startsWith("/settings") ? "selected" : ""}`}
-            href="/settings/organization"
-            onClick={() => setOpen(false)}
-          >
-            <Settings size={19} />
-            Settings
-          </Link>
+          {!isClientDemo(identity) && (
+            <Link
+              className={`nav-item ${path.startsWith("/settings") ? "selected" : ""}`}
+              href="/settings/organization"
+              onClick={() => setOpen(false)}
+            >
+              <Settings size={19} />
+              Settings
+            </Link>
+          )}
         </nav>
         <div className="sidebar-bottom">
           <div className="sidebar-note">

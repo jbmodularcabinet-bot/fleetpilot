@@ -69,7 +69,11 @@ export interface Membership {
 export interface Identity {
   user: { id: string; name: string; email: string };
   organization: Organization;
-  membership: { id: string; role: Role };
+  membership: {
+    id: string;
+    role: Role;
+    access_profile?: "CLIENT_DEMO_READONLY" | null;
+  };
   permissions: Permission[];
   organizations: Organization[];
 }
