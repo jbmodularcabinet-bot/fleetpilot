@@ -180,7 +180,25 @@ export function ReportingWorkspace({
   return (
     <div className="reporting-workspace page-stack">
       <PageHeader title={title} description={description}>
-        <StatusBadge>Reviewed operational basis</StatusBadge>
+        <div className="reporting-header-actions">
+          <StatusBadge>Reviewed operational basis</StatusBadge>
+          {mode === "dashboard" && (
+            <Link
+              className="button secondary"
+              href={`/intelligence?${reportQuery(filters)}`}
+            >
+              Open Intelligence
+            </Link>
+          )}
+          {(mode === "dashboard" || mode === "intelligence") && (
+            <Link
+              className="button secondary"
+              href={`/reports/executive-contribution?${reportQuery(filters)}`}
+            >
+              Open Reports
+            </Link>
+          )}
+        </div>
       </PageHeader>
       {filters.dataset === "synthetic" && (
         <div className="reporting-demo-banner" role="note">
@@ -346,19 +364,19 @@ export function ReportingWorkspace({
           )}
         </div>
       </Card>
-      <nav className="reporting-tabs" aria-label="Contribution reports">
-        {REPORTS.map(([key, label]) => (
-          <Link
-            key={key}
-            className={
-              mode === "report" && selectedReport === key ? "active" : ""
-            }
-            href={`/reports/${key}?${reportQuery(filters)}`}
-          >
-            {label}
-          </Link>
-        ))}
-      </nav>
+      {mode === "report" && (
+        <nav className="reporting-tabs" aria-label="Contribution reports">
+          {REPORTS.map(([key, label]) => (
+            <Link
+              key={key}
+              className={selectedReport === key ? "active" : ""}
+              href={`/reports/${key}?${reportQuery(filters)}`}
+            >
+              {label}
+            </Link>
+          ))}
+        </nav>
+      )}
       {loading && <LoadingState />}
       {error && (
         <>
@@ -386,41 +404,53 @@ export function ReportingWorkspace({
             </span>
           </div>
           <p className="reporting-qualification">{data.scope.qualification}</p>
-          <div className="reporting-toolbar">
-            <button
-              className="button secondary"
-              onClick={download}
-              disabled={downloading}
-            >
-              <Download size={16} />
-              {downloading
-                ? "Preparing complete CSV…"
-                : "Export complete filtered CSV"}
-            </button>
-            <a
-              className="button secondary"
-              href={`/api/v1/reports/${selectedReport}?${reportQuery(filters, { format: "print" })}`}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              <Printer size={16} />
-              Open print-ready report
-            </a>
-            <button
-              className="text-button"
-              onClick={() => setRefresh((n) => n + 1)}
-            >
-              <RefreshCw size={15} />
-              Recalculate
-            </button>
-          </div>
-          <p className="small muted">
-            Exports are newly calculated with their own timestamp and
-            fingerprint. Browser printing supports Save as PDF.
-          </p>
-          {exportError && <ErrorState message={exportError} />}
+          {mode === "report" && (
+            <>
+              <div className="reporting-toolbar">
+                <button
+                  className="button secondary"
+                  onClick={download}
+                  disabled={downloading}
+                >
+                  <Download size={16} />
+                  {downloading
+                    ? "Preparing complete CSV…"
+                    : "Export complete filtered CSV"}
+                </button>
+                <a
+                  className="button secondary"
+                  href={`/api/v1/reports/${selectedReport}?${reportQuery(filters, { format: "print" })}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <Printer size={16} />
+                  Open print-ready report
+                </a>
+                <button
+                  className="text-button"
+                  onClick={() => setRefresh((n) => n + 1)}
+                >
+                  <RefreshCw size={15} />
+                  Recalculate
+                </button>
+              </div>
+              <p className="small muted">
+                Exports are newly calculated with their own timestamp and
+                fingerprint. Browser printing supports Save as PDF.
+              </p>
+              {exportError && <ErrorState message={exportError} />}
+            </>
+          )}
           {(mode === "dashboard" || mode === "intelligence") && (
             <ContributionMetrics value={data.summary} />
+          )}
+          {mode === "report" && selectedReport !== "executive-contribution" && (
+            <div
+              className="reporting-report-summary"
+              aria-label="Report summary"
+            >
+              <ContributionMetrics value={data.summary} />
+            </div>
           )}
           {(mode === "dashboard" || mode === "intelligence") && (
             <Card
@@ -565,7 +595,8 @@ export function ReportingWorkspace({
               {data.scope.trip_id ?? "ALL"}
             </p>
           </details>
-          {can(identity, "organization.manage") &&
+          {mode === "report" &&
+            can(identity, "organization.manage") &&
             ["OWNER", "ADMIN"].includes(identity.membership.role) && (
               <PolicySettings
                 policy={data.policy}

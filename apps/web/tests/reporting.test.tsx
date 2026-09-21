@@ -144,15 +144,13 @@ describe("Contribution reporting UI", () => {
   it("shows request errors instead of zero-valued business metrics", async () => {
     vi.stubGlobal(
       "fetch",
-      vi
-        .fn()
-        .mockResolvedValue({
-          ok: false,
-          status: 503,
-          json: async () => ({
-            error: { message: "Financial records are busy" },
-          }),
+      vi.fn().mockResolvedValue({
+        ok: false,
+        status: 503,
+        json: async () => ({
+          error: { message: "Financial records are busy" },
         }),
+      }),
     );
     render(<ReportingWorkspace identity={identity} mode="dashboard" />);
     expect(await screen.findByRole("alert")).toHaveTextContent(
@@ -162,13 +160,11 @@ describe("Contribution reporting UI", () => {
     expect(screen.getByRole("button", { name: "Retry report" })).toBeEnabled();
   });
   it("requests no-store and clearly labels the synthetic period", async () => {
-    const fetcher = vi
-      .fn()
-      .mockResolvedValue({
-        ok: true,
-        status: 200,
-        json: async () => payload(),
-      });
+    const fetcher = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => payload(),
+    });
     vi.stubGlobal("fetch", fetcher);
     render(
       <ReportingWorkspace
@@ -232,5 +228,70 @@ describe("Contribution reporting UI", () => {
       });
     });
     expect(await screen.findByRole("alert")).toHaveTextContent("Access denied");
+  });
+  it("keeps the Owner Dashboard decision-focused instead of exposing report controls", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: async () => payload(),
+      }),
+    );
+    render(
+      <ReportingWorkspace
+        identity={identity}
+        mode="dashboard"
+        initialFilters={{
+          dataset: "synthetic",
+          date_from: "2026-09-21",
+          date_to: "2026-09-24",
+        }}
+      />,
+    );
+    await screen.findByTestId("Contribution");
+    expect(
+      screen.queryByRole("navigation", { name: "Contribution reports" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /Export complete filtered CSV/ }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: "Open Intelligence" }),
+    ).toBeVisible();
+    expect(screen.getByRole("link", { name: "Open Reports" })).toBeVisible();
+  });
+  it("keeps report navigation and export actions inside the Reports module", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: async () => payload(),
+      }),
+    );
+    render(
+      <ReportingWorkspace
+        identity={identity}
+        mode="report"
+        reportName="executive-contribution"
+        initialFilters={{
+          dataset: "synthetic",
+          date_from: "2026-09-21",
+          date_to: "2026-09-24",
+        }}
+      />,
+    );
+    expect(
+      screen.getByRole("navigation", { name: "Contribution reports" }),
+    ).toBeVisible();
+    expect(
+      await screen.findByRole("button", {
+        name: /Export complete filtered CSV/,
+      }),
+    ).toBeVisible();
+    expect(
+      screen.getByRole("link", { name: /Open print-ready report/ }),
+    ).toBeVisible();
   });
 });
