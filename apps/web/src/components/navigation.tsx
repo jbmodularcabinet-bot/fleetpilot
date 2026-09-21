@@ -70,6 +70,12 @@ export function Sidebar({ identity }: { identity: Identity }) {
     [BrainCircuit, "Intelligence"],
     [ChartSpline, "Reports"],
   ] as const;
+  const ownerIntelligence =
+    can(identity, "trip_financials.read") &&
+    can(identity, "trip_profitability.read") &&
+    can(identity, "expenses.read") &&
+    can(identity, "cash_advance.read") &&
+    can(identity, "financial_review.read");
   return (
     <>
       <button
@@ -148,6 +154,26 @@ export function Sidebar({ identity }: { identity: Identity }) {
                   </Link>
                 )}
               </div>
+            ) : label === "Intelligence" && ownerIntelligence ? (
+              <Link
+                key={label}
+                className={`nav-item ${path.startsWith("/intelligence") ? "selected" : ""}`}
+                href="/intelligence"
+                onClick={() => setOpen(false)}
+              >
+                <BrainCircuit size={19} />
+                Intelligence
+              </Link>
+            ) : label === "Reports" && ownerIntelligence ? (
+              <Link
+                key={label}
+                className={`nav-item ${path.startsWith("/reports") ? "selected" : ""}`}
+                href="/reports"
+                onClick={() => setOpen(false)}
+              >
+                <ChartSpline size={19} />
+                Reports
+              </Link>
             ) : (
               <button
                 className="nav-item"
