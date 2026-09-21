@@ -178,7 +178,7 @@ export function ReportingWorkspace({
         : (REPORTS.find(([key]) => key === reportName)?.[2] ??
           "Contribution reporting");
   return (
-    <div className="reporting-workspace page-stack">
+    <div className={`reporting-workspace page-stack reporting-mode-${mode}`}>
       <PageHeader title={title} description={description}>
         <StatusBadge>Reviewed operational basis</StatusBadge>
       </PageHeader>
@@ -192,7 +192,9 @@ export function ReportingWorkspace({
           </span>
         </div>
       )}
-      <Card className="reporting-filter-card">
+      <Card
+        className={`reporting-filter-card ${mode === "report" ? "reporting-filter-card-full" : "reporting-filter-card-compact"}`}
+      >
         <form
           className="reporting-filters"
           onSubmit={(e) => {
@@ -346,19 +348,19 @@ export function ReportingWorkspace({
           )}
         </div>
       </Card>
-      <nav className="reporting-tabs" aria-label="Contribution reports">
-        {REPORTS.map(([key, label]) => (
-          <Link
-            key={key}
-            className={
-              mode === "report" && selectedReport === key ? "active" : ""
-            }
-            href={`/reports/${key}?${reportQuery(filters)}`}
-          >
-            {label}
-          </Link>
-        ))}
-      </nav>
+      {mode === "report" && (
+        <nav className="reporting-tabs" aria-label="Contribution reports">
+          {REPORTS.map(([key, label]) => (
+            <Link
+              key={key}
+              className={selectedReport === key ? "active" : ""}
+              href={`/reports/${key}?${reportQuery(filters)}`}
+            >
+              {label}
+            </Link>
+          ))}
+        </nav>
+      )}
       {loading && <LoadingState />}
       {error && (
         <>
@@ -386,39 +388,59 @@ export function ReportingWorkspace({
             </span>
           </div>
           <p className="reporting-qualification">{data.scope.qualification}</p>
-          <div className="reporting-toolbar">
-            <button
-              className="button secondary"
-              onClick={download}
-              disabled={downloading}
-            >
-              <Download size={16} />
-              {downloading
-                ? "Preparing complete CSV…"
-                : "Export complete filtered CSV"}
-            </button>
-            <a
-              className="button secondary"
-              href={`/api/v1/reports/${selectedReport}?${reportQuery(filters, { format: "print" })}`}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              <Printer size={16} />
-              Open print-ready report
-            </a>
-            <button
-              className="text-button"
-              onClick={() => setRefresh((n) => n + 1)}
-            >
-              <RefreshCw size={15} />
-              Recalculate
-            </button>
-          </div>
-          <p className="small muted">
-            Exports are newly calculated with their own timestamp and
-            fingerprint. Browser printing supports Save as PDF.
-          </p>
-          {exportError && <ErrorState message={exportError} />}
+          {mode === "report" ? (
+            <>
+              <div className="reporting-toolbar">
+                <button
+                  className="button secondary"
+                  onClick={download}
+                  disabled={downloading}
+                >
+                  <Download size={16} />
+                  {downloading
+                    ? "Preparing complete CSV…"
+                    : "Export complete filtered CSV"}
+                </button>
+                <a
+                  className="button secondary"
+                  href={`/api/v1/reports/${selectedReport}?${reportQuery(filters, { format: "print" })}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <Printer size={16} />
+                  Open print-ready report
+                </a>
+                <button
+                  className="text-button"
+                  onClick={() => setRefresh((n) => n + 1)}
+                >
+                  <RefreshCw size={15} />
+                  Recalculate
+                </button>
+              </div>
+              <p className="small muted">
+                Exports are newly calculated with their own timestamp and
+                fingerprint. Browser printing supports Save as PDF.
+              </p>
+              {exportError && <ErrorState message={exportError} />}
+            </>
+          ) : (
+            <div className="reporting-decision-actions">
+              <Link
+                className="button secondary"
+                href={`/reports/executive-contribution?${reportQuery(filters)}`}
+              >
+                Open Reports
+              </Link>
+              <button
+                className="text-button"
+                onClick={() => setRefresh((n) => n + 1)}
+              >
+                <RefreshCw size={15} />
+                Refresh
+              </button>
+            </div>
+          )}
           {(mode === "dashboard" || mode === "intelligence") && (
             <ContributionMetrics value={data.summary} />
           )}

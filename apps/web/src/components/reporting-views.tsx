@@ -70,8 +70,11 @@ export function ContributionMetrics({ value }: { value: Summary }) {
   ] as const;
   return (
     <div className="kpi-grid reporting-kpis">
-      {cards.map(([label, amount, Icon, hint, tone]) => (
-        <Card key={label} className={`kpi kpi-${tone}`}>
+      {cards.map(([label, amount, Icon, hint, tone], index) => (
+        <Card
+          key={label}
+          className={`kpi kpi-${tone} ${index < 4 ? "reporting-kpi-primary" : "reporting-kpi-attention"}`}
+        >
           <div className="kpi-top">
             <span className={`icon-box icon-box-${tone}`}>
               <Icon size={20} />
@@ -109,7 +112,15 @@ export function FindingCards({
           key={f.key}
         >
           <div className="reporting-finding-title">
-            <StatusBadge tone={f.priority === "LOW" ? "neutral" : "warning"}>
+            <StatusBadge
+              tone={
+                f.priority === "LOW"
+                  ? "neutral"
+                  : f.priority === "HIGH" || f.priority === "CRITICAL"
+                    ? "critical"
+                    : "warning"
+              }
+            >
               {f.priority}
             </StatusBadge>
             <h3>{f.title}</h3>

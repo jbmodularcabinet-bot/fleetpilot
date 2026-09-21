@@ -38,7 +38,7 @@ export function StatusBadge({
   tone = "neutral",
 }: {
   children: ReactNode;
-  tone?: "neutral" | "positive" | "active" | "warning";
+  tone?: "neutral" | "positive" | "active" | "warning" | "critical";
 }) {
   return <span className={`badge badge-${tone}`}>{children}</span>;
 }
@@ -69,7 +69,8 @@ export function KpiCard({
 }: {
   label: string;
   icon: ReactNode;
-  tone?: "neutral" | "positive" | "active" | "warning" | "critical" | "intelligence";
+  tone?:
+    "neutral" | "positive" | "active" | "warning" | "critical" | "intelligence";
   hint?: string;
 }) {
   return (

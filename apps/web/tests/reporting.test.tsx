@@ -144,15 +144,13 @@ describe("Contribution reporting UI", () => {
   it("shows request errors instead of zero-valued business metrics", async () => {
     vi.stubGlobal(
       "fetch",
-      vi
-        .fn()
-        .mockResolvedValue({
-          ok: false,
-          status: 503,
-          json: async () => ({
-            error: { message: "Financial records are busy" },
-          }),
+      vi.fn().mockResolvedValue({
+        ok: false,
+        status: 503,
+        json: async () => ({
+          error: { message: "Financial records are busy" },
         }),
+      }),
     );
     render(<ReportingWorkspace identity={identity} mode="dashboard" />);
     expect(await screen.findByRole("alert")).toHaveTextContent(
@@ -162,13 +160,11 @@ describe("Contribution reporting UI", () => {
     expect(screen.getByRole("button", { name: "Retry report" })).toBeEnabled();
   });
   it("requests no-store and clearly labels the synthetic period", async () => {
-    const fetcher = vi
-      .fn()
-      .mockResolvedValue({
-        ok: true,
-        status: 200,
-        json: async () => payload(),
-      });
+    const fetcher = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => payload(),
+    });
     vi.stubGlobal("fetch", fetcher);
     render(
       <ReportingWorkspace
@@ -191,6 +187,56 @@ describe("Contribution reporting UI", () => {
     expect(fetcher.mock.calls[0][1].cache).toBe("no-store");
     expect(fetcher.mock.calls[0][0]).toContain("dataset=synthetic");
   });
+  it("keeps decision screens focused while Reports retain report controls", async () => {
+    const fetcher = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => payload(),
+    });
+    vi.stubGlobal("fetch", fetcher);
+
+    const view = render(
+      <ReportingWorkspace
+        identity={identity}
+        mode="dashboard"
+        initialFilters={{
+          dataset: "synthetic",
+          date_from: "2026-09-21",
+          date_to: "2026-09-24",
+        }}
+      />,
+    );
+    await screen.findByTestId("Contribution");
+    expect(
+      screen.queryByRole("navigation", { name: "Contribution reports" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Export complete filtered CSV" }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Open Reports" })).toBeVisible();
+
+    view.rerender(
+      <ReportingWorkspace
+        identity={identity}
+        mode="report"
+        reportName="executive-contribution"
+        initialFilters={{
+          dataset: "synthetic",
+          date_from: "2026-09-21",
+          date_to: "2026-09-24",
+        }}
+      />,
+    );
+    await waitFor(() =>
+      expect(
+        screen.getByRole("navigation", { name: "Contribution reports" }),
+      ).toBeVisible(),
+    );
+    expect(
+      screen.getByRole("button", { name: "Export complete filtered CSV" }),
+    ).toBeVisible();
+  });
+
   it("removes previous-organization values while the next report loads", async () => {
     let complete: ((value: unknown) => void) | undefined;
     const fetcher = vi

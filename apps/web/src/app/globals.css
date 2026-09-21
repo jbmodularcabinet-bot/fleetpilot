@@ -416,6 +416,11 @@ select:disabled {
   color: var(--warning-text);
   background: var(--warning-bg);
 }
+.badge-critical {
+  color: var(--red);
+  background: var(--critical-bg);
+  border-color: color-mix(in srgb, var(--red) 24%, var(--border));
+}
 .card {
   background: var(--white);
   border: 1px solid var(--border);
