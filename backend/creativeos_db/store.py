@@ -13,7 +13,7 @@ from .brand_brain import validate_brand_payload
 TABLES = {
     "brand_profiles", "campaigns", "storyboards", "scenes", "assets",
     "generation_jobs", "qa_results", "export_jobs", "creative_memory", "director_plans", "scene_versions",
-    "asset_requirements", "generated_assets",
+    "asset_requirements", "generated_assets", "generation_queue",
 }
 JSON_FIELDS = {
     "brand_profiles": {"palette_json", "fonts_json", "messaging_json", "cta_rules_json", "prohibited_visuals_json", "approved_refs_json", "immutable_rules_json", "pain_points_json", "proof_points_json", "prohibited_messaging_json", "preferred_terms_json", "prohibited_terms_json", "campaign_languages_json", "approved_ui_folders_json", "protected_screens_json", "allowed_ui_transforms_json", "prohibited_generative_transforms_json", "visual_rules_json"},

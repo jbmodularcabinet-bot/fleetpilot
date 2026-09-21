@@ -21,3 +21,12 @@ Design source of truth:
 - ../V1_UI_AE/DESIGN-PASS-02.md
 - ../V1_UI_AE/CREATIVE-DIRECTOR-STORYBOARD-SPEC.md
 - ../V1_UI_AE/build_creativeos_v1.jsx
+
+
+Batch 7 lock:
+- generation_jobs remains creative request/provenance authority.
+- generation_queue is authoritative for scheduling and execution lifecycle.
+- generated_assets remains immutable output provenance.
+- Queue retries reuse the same generation job and queue record.
+- MOCK is the only enabled provider by default; live provider routes refuse execution until configured.
+- Atomic claim + claim_token + lease recovery are required invariants.

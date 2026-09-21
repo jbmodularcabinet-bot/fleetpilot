@@ -268,3 +268,44 @@ ALTER TABLE generation_jobs DROP COLUMN asset_requirement_id;
 DELETE FROM schema_migrations WHERE version=5;
 """
 MIGRATIONS[5] = (MIGRATION_5_UP, MIGRATION_5_DOWN)
+
+MIGRATION_6_UP = """
+CREATE TABLE generation_queue(
+ id TEXT PRIMARY KEY,
+ generation_job_id TEXT NOT NULL UNIQUE,
+ state TEXT NOT NULL DEFAULT 'QUEUED' CHECK(state IN ('QUEUED','CLAIMED','RUNNING','SUCCEEDED','FAILED','CANCELLED')),
+ priority INTEGER NOT NULL DEFAULT 100,
+ available_at TEXT NOT NULL,
+ attempt_count INTEGER NOT NULL DEFAULT 0 CHECK(attempt_count >= 0),
+ max_attempts INTEGER NOT NULL DEFAULT 3 CHECK(max_attempts > 0),
+ claimed_by TEXT,
+ claim_token TEXT,
+ claimed_at TEXT,
+ lease_expires_at TEXT,
+ started_at TEXT,
+ finished_at TEXT,
+ cancel_requested_at TEXT,
+ last_error_code TEXT,
+ last_error_message TEXT,
+ created_at TEXT NOT NULL,
+ updated_at TEXT NOT NULL,
+ FOREIGN KEY(generation_job_id) REFERENCES generation_jobs(id) ON DELETE CASCADE
+);
+"""
+MIGRATION_6_UP += """
+CREATE INDEX ix_generation_queue_ready
+ ON generation_queue(state, priority, available_at, created_at, id);
+CREATE INDEX ix_generation_queue_lease
+ ON generation_queue(state, lease_expires_at);
+CREATE UNIQUE INDEX ux_generation_queue_claim_token
+ ON generation_queue(claim_token) WHERE claim_token IS NOT NULL;
+INSERT INTO schema_migrations(version) VALUES(6);
+"""
+MIGRATION_6_DOWN = """
+DROP INDEX IF EXISTS ux_generation_queue_claim_token;
+DROP INDEX IF EXISTS ix_generation_queue_lease;
+DROP INDEX IF EXISTS ix_generation_queue_ready;
+DROP TABLE IF EXISTS generation_queue;
+DELETE FROM schema_migrations WHERE version=6;
+"""
+MIGRATIONS[6] = (MIGRATION_6_UP, MIGRATION_6_DOWN)

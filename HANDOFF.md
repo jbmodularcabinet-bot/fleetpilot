@@ -41,3 +41,25 @@ Known limitations:
 - React UI still uses localStorage for editable proposal drafts until Tauri bridge work; SQLite is authoritative backend persistence
 
 Next permitted batch: Batch 5 — Storyboard production workflow.
+
+
+## Batch 7 — PASS
+
+Implemented provider-neutral routing and the persistent local generation queue.
+
+Added:
+- migration v6 with generation_queue, scheduling/lease indexes, and one-output-per-job uniqueness
+- router.py with MOCK capability routing and disabled live provider registrations
+- queue.py with atomic claims, claim tokens, leases, same-job retry limits, cancellation, stale recovery, and bounded worker execution
+- Batch 7 targeted tests covering migration rollback, routing, atomic claim, restart recovery, retry limits, cancellation-after-return, and idempotent success
+
+Verification:
+- Targeted Batch 7: 7 passed, 0 failed
+- Full backend: 32 passed, 0 failed
+- Frontend/UI: 10 passed, 0 failed
+- Lint: PASS
+- TypeScript / production build: PASS
+- v5→v6→v5→v6 migration path: PASS
+
+Live providers remain disabled unless explicitly configured.
+Next permitted batch: Batch 8 — Cost Optimizer.

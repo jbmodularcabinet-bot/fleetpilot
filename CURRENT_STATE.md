@@ -7,34 +7,34 @@ Batch 3 — PASS.
 Batch 4 — PASS.
 Batch 5 — PASS.
 Batch 6 — PASS.
+Batch 7 — PASS.
 
 Verified repository:
 C:\Users\User\Documents\CreativeOS\CreativeOS-Studio
 
-Implemented through Batch 6:
-- React + TypeScript Vite application shell and approved graphite/mint UI.
-- Campaign Home, Brand Brain, Creative Director, and Storyboard production workflow.
-- Python stdlib sqlite3 local backend with schema migration v5.
-- Persistent Brand Brain and immutable UI policy.
-- Provider-independent Creative Director with deterministic MOCK provider and explicit unconfigured LIVE adapter.
-- Versioned Director plans plus storyboard scene/version workflows.
-- Structured asset requirements linked to storyboard scenes.
-- Generation jobs with prompt/reference/cost/retry metadata and provider/model snapshots.
-- Deterministic local MOCK generation adapter; no paid/live generation calls.
-- Generated asset records with SHA-256 provenance, immutable output metadata, and review states.
-- Failure diagnostics, safe retry chaining, and idempotent successful-job handling.
-- Human review states: PENDING, APPROVED, REJECTED, REGENERATE.
+Implemented through Batch 7:
+- Batch 6 asset/generation provenance pipeline preserved.
+- SQLite schema v6 adds persistent generation_queue execution records.
+- ProviderRouter supports image, video, presenter, and voice capability matching.
+- MOCK provider is enabled; real provider registrations are disabled by default.
+- Persistent queue states: QUEUED, CLAIMED, RUNNING, SUCCEEDED, FAILED, CANCELLED.
+- Atomic SQLite claims use worker identity, unique claim tokens, and expiring leases.
+- Same-job retry accounting, deterministic ordering, cancellation, and stale-worker recovery are persistent.
+- Generated outputs remain immutable; v6 enforces one generated asset per generation job.
+- Immutable UI cannot route through generative image/video providers.
 
 Verification:
-- Batch 6 targeted backend tests: 3 passed, 0 failed.
-- Full backend regression: 25 passed, 0 failed.
+- Batch 7 targeted backend tests: 7 passed, 0 failed.
+- Full backend regression: 32 passed, 0 failed.
 - Frontend/UI regression: 10 passed, 0 failed.
 - Lint: PASS, 0 warnings/errors.
 - TypeScript / production build: PASS.
-- Migration v4→v5, rollback to v4, and reapply: PASS.
-- Prior Batch 0–5 behavior preserved: PASS.
+- Migration v5→v6, rollback to v5, and reapply: PASS.
+- Batch 0–6 regression preserved: PASS.
 
-Known environment gap: FFmpeg is not on PATH; required before later media-composition work.
-Frontend desktop bridge to SQLite remains deferred; existing UI draft persistence behavior is unchanged.
+Known environment gaps remain unchanged:
+- FFmpeg is not on PATH.
+- Frontend desktop bridge to SQLite remains deferred.
+- Live generation providers remain intentionally disabled unless explicitly configured.
 
-Stop condition honored: Batch 7 not started.
+Stop condition honored: Batch 8 not started.
