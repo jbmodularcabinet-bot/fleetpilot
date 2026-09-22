@@ -30,3 +30,12 @@ Batch 7 lock:
 - Queue retries reuse the same generation job and queue record.
 - MOCK is the only enabled provider by default; live provider routes refuse execution until configured.
 - Atomic claim + claim_token + lease recovery are required invariants.
+
+
+Batch 8 lock:
+- Cost intelligence is advisory evidence, never queue execution authority.
+- Authoritative money is integer minor units with ISO currency + explicit minor exponent.
+- FX conversion requires an immutable explicit snapshot and uses Decimal ROUND_HALF_UP.
+- Missing budget, pricing, currency, quantity, or required FX is UNKNOWN, never zero.
+- Historical profiles, FX snapshots, recommendations, estimates, and overrides are append-only evidence.
+- Budget override cannot bypass capability, provider-enable, immutable-UI, or security constraints.

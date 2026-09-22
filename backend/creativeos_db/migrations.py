@@ -309,3 +309,78 @@ DROP TABLE IF EXISTS generation_queue;
 DELETE FROM schema_migrations WHERE version=6;
 """
 MIGRATIONS[6] = (MIGRATION_6_UP, MIGRATION_6_DOWN)
+
+MIGRATION_7_UP = """
+ALTER TABLE campaigns ADD COLUMN budget_currency TEXT;
+ALTER TABLE campaigns ADD COLUMN budget_minor_exponent INTEGER;
+ALTER TABLE campaigns ADD COLUMN near_limit_bps INTEGER NOT NULL DEFAULT 9000;
+CREATE TABLE provider_cost_profiles(
+ id TEXT PRIMARY KEY, provider TEXT NOT NULL, model TEXT NOT NULL,
+ capability TEXT NOT NULL, quality_tier TEXT NOT NULL,
+ currency TEXT NOT NULL, currency_minor_exponent INTEGER NOT NULL,
+ fixed_cost_minor INTEGER, per_image_cost_minor INTEGER,
+ per_second_cost_minor INTEGER, per_unit_cost_minor INTEGER,
+ source_label TEXT NOT NULL DEFAULT 'LOCAL_CONFIG', version INTEGER NOT NULL,
+ effective_at TEXT NOT NULL, created_at TEXT NOT NULL,
+ UNIQUE(provider, model, capability, version)
+);
+CREATE TABLE fx_snapshots(
+ id TEXT PRIMARY KEY, from_currency TEXT NOT NULL, to_currency TEXT NOT NULL,
+ from_minor_exponent INTEGER NOT NULL, to_minor_exponent INTEGER NOT NULL,
+ rate_decimal TEXT NOT NULL, rate_source TEXT NOT NULL,
+ rate_effective_at TEXT NOT NULL, captured_at TEXT NOT NULL, created_at TEXT NOT NULL
+);
+"""
+MIGRATION_7_UP += """
+CREATE TABLE cost_recommendations(
+ id TEXT PRIMARY KEY, asset_requirement_id TEXT NOT NULL, campaign_id TEXT NOT NULL,
+ budget_total_minor INTEGER, budget_currency TEXT, budget_minor_exponent INTEGER,
+ committed_cost_minor INTEGER NOT NULL DEFAULT 0,
+ planned_cost_minor INTEGER NOT NULL DEFAULT 0,
+ near_limit_bps INTEGER NOT NULL DEFAULT 9000,
+ recommended_estimate_id TEXT, created_at TEXT NOT NULL,
+ FOREIGN KEY(asset_requirement_id) REFERENCES asset_requirements(id) ON DELETE RESTRICT,
+ FOREIGN KEY(campaign_id) REFERENCES campaigns(id) ON DELETE RESTRICT
+);
+CREATE TABLE cost_estimates(
+ id TEXT PRIMARY KEY, recommendation_id TEXT NOT NULL,
+ provider_cost_profile_id TEXT NOT NULL, fx_snapshot_id TEXT,
+ provider TEXT NOT NULL, model TEXT NOT NULL, capability TEXT NOT NULL,
+ quality_tier TEXT NOT NULL, original_cost_minor INTEGER,
+ original_currency TEXT NOT NULL, normalized_cost_minor INTEGER,
+ normalized_currency TEXT, budget_state TEXT NOT NULL,
+ is_recommended INTEGER NOT NULL DEFAULT 0 CHECK(is_recommended IN (0,1)),
+ profile_snapshot_json TEXT NOT NULL, fx_snapshot_json TEXT,
+ budget_snapshot_json TEXT NOT NULL, calculation_json TEXT NOT NULL,
+ created_at TEXT NOT NULL,
+ FOREIGN KEY(recommendation_id) REFERENCES cost_recommendations(id) ON DELETE RESTRICT,
+ FOREIGN KEY(provider_cost_profile_id) REFERENCES provider_cost_profiles(id) ON DELETE RESTRICT,
+ FOREIGN KEY(fx_snapshot_id) REFERENCES fx_snapshots(id) ON DELETE RESTRICT
+);
+"""
+MIGRATION_7_UP += """
+CREATE TABLE cost_overrides(
+ id TEXT PRIMARY KEY, recommendation_id TEXT NOT NULL,
+ selected_estimate_id TEXT NOT NULL, original_recommended_estimate_id TEXT,
+ reason TEXT NOT NULL, evidence_json TEXT NOT NULL, created_at TEXT NOT NULL,
+ FOREIGN KEY(recommendation_id) REFERENCES cost_recommendations(id) ON DELETE RESTRICT,
+ FOREIGN KEY(selected_estimate_id) REFERENCES cost_estimates(id) ON DELETE RESTRICT
+);
+CREATE INDEX ix_cost_estimates_recommendation ON cost_estimates(recommendation_id);
+CREATE INDEX ix_cost_recommendations_campaign ON cost_recommendations(campaign_id, created_at);
+INSERT INTO schema_migrations(version) VALUES(7);
+"""
+MIGRATION_7_DOWN = """
+DROP INDEX IF EXISTS ix_cost_recommendations_campaign;
+DROP INDEX IF EXISTS ix_cost_estimates_recommendation;
+DROP TABLE IF EXISTS cost_overrides;
+DROP TABLE IF EXISTS cost_estimates;
+DROP TABLE IF EXISTS cost_recommendations;
+DROP TABLE IF EXISTS fx_snapshots;
+DROP TABLE IF EXISTS provider_cost_profiles;
+ALTER TABLE campaigns DROP COLUMN near_limit_bps;
+ALTER TABLE campaigns DROP COLUMN budget_minor_exponent;
+ALTER TABLE campaigns DROP COLUMN budget_currency;
+DELETE FROM schema_migrations WHERE version=7;
+"""
+MIGRATIONS[7] = (MIGRATION_7_UP, MIGRATION_7_DOWN)

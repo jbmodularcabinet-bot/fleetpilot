@@ -14,11 +14,14 @@ TABLES = {
     "brand_profiles", "campaigns", "storyboards", "scenes", "assets",
     "generation_jobs", "qa_results", "export_jobs", "creative_memory", "director_plans", "scene_versions",
     "asset_requirements", "generated_assets", "generation_queue",
+    "provider_cost_profiles", "fx_snapshots", "cost_recommendations", "cost_estimates", "cost_overrides",
 }
 JSON_FIELDS = {
     "brand_profiles": {"palette_json", "fonts_json", "messaging_json", "cta_rules_json", "prohibited_visuals_json", "approved_refs_json", "immutable_rules_json", "pain_points_json", "proof_points_json", "prohibited_messaging_json", "preferred_terms_json", "prohibited_terms_json", "campaign_languages_json", "approved_ui_folders_json", "protected_screens_json", "allowed_ui_transforms_json", "prohibited_generative_transforms_json", "visual_rules_json"},
     "generation_jobs": {"request_json", "response_json", "reference_assets_json", "cost_credit_json"},
     "generated_assets": {"output_metadata_json"},
+    "cost_estimates": {"profile_snapshot_json", "fx_snapshot_json", "budget_snapshot_json", "calculation_json"},
+    "cost_overrides": {"evidence_json"},
     "export_jobs": {"settings_json"},
     "director_plans": {"brief_json", "output_json"},
     "scenes": {"asset_requirements_json"},
@@ -123,8 +126,8 @@ class CreativeOSStore:
         rows = self.conn.execute(sql, list(where.values())).fetchall()
         return [dict(row) for row in rows]
     def update(self, table: str, row_id: str, values: dict[str, Any]) -> dict[str, Any]:
-        if table == "generated_assets":
-            raise ValueError("generated asset provenance is immutable")
+        if table in {"generated_assets", "provider_cost_profiles", "fx_snapshots", "cost_recommendations", "cost_estimates", "cost_overrides"}:
+            raise ValueError(f"{table} records are immutable")
         columns = self._columns(table)
         if table == "brand_profiles":
             current = self.get(table, row_id)
@@ -152,8 +155,8 @@ class CreativeOSStore:
         return self.get(table, row_id)
 
     def delete(self, table: str, row_id: str) -> None:
-        if table == "generated_assets":
-            raise ValueError("generated asset provenance is immutable")
+        if table in {"generated_assets", "provider_cost_profiles", "fx_snapshots", "cost_recommendations", "cost_estimates", "cost_overrides"}:
+            raise ValueError(f"{table} records are immutable")
         self._columns(table)
         cur = self.conn.execute(f"DELETE FROM {table} WHERE id=?", (row_id,))
         if cur.rowcount == 0:

@@ -41,6 +41,9 @@ class ProviderRouter:
             if not item.enabled:
                 raise RuntimeError(f"provider {item.name} is not configured/enabled")
         raise RuntimeError(f"no enabled provider for capability {capability}")
+    def registration(self, name: str) -> ProviderRegistration:
+        return self._get(name.upper())
+
     def _get(self, key: str) -> ProviderRegistration:
         try:
             return self._providers[key]

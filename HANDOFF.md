@@ -63,3 +63,35 @@ Verification:
 
 Live providers remain disabled unless explicitly configured.
 Next permitted batch: Batch 8 — Cost Optimizer.
+
+
+## Batch 8 — PASS
+
+Added deterministic pre-generation cost intelligence without changing queue execution authority.
+
+Data model:
+- campaign budget currency/minor exponent + near-limit bps
+- provider_cost_profiles
+- fx_snapshots
+- cost_recommendations
+- cost_estimates
+- cost_overrides
+
+Rules:
+- integer minor-unit money only
+- explicit ISO currency and minor exponents
+- Decimal FX with ROUND_HALF_UP
+- missing budget/pricing/FX => UNKNOWN
+- zero cost requires explicit zero profile
+- enabled/capability-compatible/exact-quality routes only
+- budget may be overridden with evidence; technical/safety restrictions may not
+- historical financial evidence is immutable/versioned
+
+Verification:
+- targeted Batch 8: 13/13 PASS
+- full backend: 45/45 PASS
+- frontend/UI: 10/10 PASS
+- lint/build: PASS
+- v6→v7→v6→v7 migration path: PASS
+
+Next permitted batch: Batch 9 — Voice/FFmpeg.
