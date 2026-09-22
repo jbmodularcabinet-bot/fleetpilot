@@ -26,7 +26,7 @@ class Batch8CostOptimizerTests(unittest.TestCase):
         self.tmp = tempfile.TemporaryDirectory()
         self.db = Path(self.tmp.name) / "creativeos.sqlite3"
         self.store = CreativeOSStore(self.db)
-        self.assertEqual(self.store.migrate_to_latest(), 7)
+        self.assertEqual(self.store.migrate_to_latest(), 8)
         brand = BrandBrainService(self.store).load_fleetpilot_fixture()
         self.campaign = self.store.create("campaigns", {"brand_profile_id": brand["id"], "title": "Cost"})
         board = self.store.create("storyboards", {"campaign_id": self.campaign["id"], "title": "Cost"})
@@ -67,7 +67,7 @@ class Batch8CostOptimizerTests(unittest.TestCase):
         self.assertEqual(self.store.rollback_to(6), 6)
         self.assertEqual(self.store.get("generation_jobs", job["id"])["id"], job["id"])
         self.assertEqual(self.store.get("generation_queue", queue["id"])["id"], queue["id"])
-        self.assertEqual(self.store.migrate_to_latest(), 7)
+        self.assertEqual(self.store.migrate_to_latest(), 8)
 
     def test_money_is_integer_minor_units_and_zero_is_known(self):
         with self.assertRaises(ValueError):

@@ -15,6 +15,7 @@ TABLES = {
     "generation_jobs", "qa_results", "export_jobs", "creative_memory", "director_plans", "scene_versions",
     "asset_requirements", "generated_assets", "generation_queue",
     "provider_cost_profiles", "fx_snapshots", "cost_recommendations", "cost_estimates", "cost_overrides",
+    "voice_jobs", "composition_timelines", "composition_timeline_entries", "render_jobs", "render_attempts",
 }
 JSON_FIELDS = {
     "brand_profiles": {"palette_json", "fonts_json", "messaging_json", "cta_rules_json", "prohibited_visuals_json", "approved_refs_json", "immutable_rules_json", "pain_points_json", "proof_points_json", "prohibited_messaging_json", "preferred_terms_json", "prohibited_terms_json", "campaign_languages_json", "approved_ui_folders_json", "protected_screens_json", "allowed_ui_transforms_json", "prohibited_generative_transforms_json", "visual_rules_json"},
@@ -22,6 +23,8 @@ JSON_FIELDS = {
     "generated_assets": {"output_metadata_json"},
     "cost_estimates": {"profile_snapshot_json", "fx_snapshot_json", "budget_snapshot_json", "calculation_json"},
     "cost_overrides": {"evidence_json"},
+    "composition_timeline_entries": {"transition_json"},
+    "render_jobs": {"command_args_json", "probe_json"},
     "export_jobs": {"settings_json"},
     "director_plans": {"brief_json", "output_json"},
     "scenes": {"asset_requirements_json"},

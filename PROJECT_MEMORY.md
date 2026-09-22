@@ -39,3 +39,14 @@ Batch 8 lock:
 - Missing budget, pricing, currency, quantity, or required FX is UNKNOWN, never zero.
 - Historical profiles, FX snapshots, recommendations, estimates, and overrides are append-only evidence.
 - Budget override cannot bypass capability, provider-enable, immutable-UI, or security constraints.
+
+
+Batch 9 lock:
+- Voice is deterministic MOCK only until a later explicitly authorized live-provider batch.
+- voice_jobs owns local voice request/output provenance.
+- composition_timelines + composition_timeline_entries own deterministic media ordering/timing.
+- render_jobs owns authoritative render identity/result; render_attempts preserves per-attempt diagnostics.
+- FFmpeg execution must use validated argument arrays with shell=False; stored metadata is never executable shell input.
+- Preview outputs stay under the approved generated-output root and never overwrite source assets.
+- Successful identical render identity is reused; source-file hashes participate in render identity.
+- ffprobe verification, source checksum protection, and 0.20s duration tolerance are required Batch 9 invariants.

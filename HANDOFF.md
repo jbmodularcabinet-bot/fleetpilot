@@ -95,3 +95,44 @@ Verification:
 - v6→v7→v6→v7 migration path: PASS
 
 Next permitted batch: Batch 9 — Voice/FFmpeg.
+
+
+## Batch 9 — PASS
+
+Implemented the bounded local voice + FFmpeg composition foundation.
+
+Environment:
+- Installed Gyan.FFmpeg 9.0.2 through existing winget.
+- Verified absolute ffmpeg/ffprobe binaries and bounded smoke command.
+- winget updated user PATH; current RDC process used absolute paths until shell restart.
+
+Backend:
+- schema v8: voice_jobs, composition_timelines, composition_timeline_entries, render_jobs, render_attempts
+- deterministic MOCK PCM WAV voice adapter
+- persistent voice provenance and failure evidence
+- ordered restart-safe timeline persistence
+- safe structured FFmpeg argument builder using shell=False
+- bounded source/output path validation and preview limits
+- SHA-256 source/output protection
+- ffprobe metadata verification with 0.20s duration tolerance
+- deterministic render identity and successful-render reuse
+- separate render-attempt evidence for failed/retried execution
+
+Proof:
+- 2.000s 640x360 local MP4 with video + audio
+- FFmpeg exit 0 / ffprobe PASS
+- hero source checksum unchanged
+- output SHA-256: 1d8475371b80ee9fdebfb83839128c113d9af48f53ec65a877555b02b04ee9a9
+- persistent proof: backend/generated/batch9-proof/proof.sqlite3
+- summary: backend/generated/batch9-proof/proof_summary.json
+
+Verification:
+- targeted Batch 9: 7/7 PASS
+- full backend: 52/52 PASS
+- frontend/UI: 10/10 PASS
+- lint: PASS
+- TypeScript / production build: PASS
+- v7→v8→v7→v8 migration path: PASS
+- Batch 0–8 regression: PASS
+
+Next permitted batch: Batch 10 — QA Engine.

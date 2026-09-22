@@ -14,7 +14,7 @@ class BrandBrainTests(unittest.TestCase):
         self.tmp = tempfile.TemporaryDirectory()
         self.db_path = Path(self.tmp.name) / "creativeos.sqlite3"
         self.store = CreativeOSStore(self.db_path)
-        self.assertEqual(self.store.migrate_to_latest(), 7)
+        self.assertEqual(self.store.migrate_to_latest(), 8)
         self.service = BrandBrainService(self.store)
 
     def tearDown(self) -> None:
@@ -62,9 +62,9 @@ class BrandBrainTests(unittest.TestCase):
         store.conn.execute("INSERT INTO brand_profiles(id,name,palette_json,fonts_json,created_at,updated_at) VALUES(?,?,?,?,?,?)", ("legacy-brand", "Legacy", "[\"#112233\"]", "[]", "2026-01-01T00:00:00+00:00", "2026-01-01T00:00:00+00:00"))
         store.conn.commit()
         self.assertEqual(store.schema_version(), 1)
-        self.assertEqual(store.migrate_to_latest(), 7)
+        self.assertEqual(store.migrate_to_latest(), 8)
         self.assertEqual(store.get("brand_profiles", "legacy-brand")["name"], "Legacy")
         self.assertEqual(store.rollback_to(1), 1)
         self.assertEqual(store.get("brand_profiles", "legacy-brand")["name"], "Legacy")
-        self.assertEqual(store.migrate_to_latest(), 7)
+        self.assertEqual(store.migrate_to_latest(), 8)
         store.close()

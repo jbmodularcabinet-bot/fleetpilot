@@ -384,3 +384,63 @@ ALTER TABLE campaigns DROP COLUMN budget_currency;
 DELETE FROM schema_migrations WHERE version=7;
 """
 MIGRATIONS[7] = (MIGRATION_7_UP, MIGRATION_7_DOWN)
+
+MIGRATION_8_UP = """
+CREATE TABLE voice_jobs(
+ id TEXT PRIMARY KEY, scene_id TEXT NOT NULL, generation_job_id TEXT,
+ provider TEXT NOT NULL, model TEXT NOT NULL, voice_id TEXT NOT NULL,
+ text_snapshot TEXT NOT NULL, language TEXT NOT NULL DEFAULT 'en',
+ status TEXT NOT NULL DEFAULT 'PENDING' CHECK(status IN ('PENDING','RUNNING','SUCCEEDED','FAILED')),
+ output_path TEXT, duration_ms INTEGER, checksum_sha256 TEXT, error TEXT,
+ created_at TEXT NOT NULL, updated_at TEXT NOT NULL,
+ FOREIGN KEY(scene_id) REFERENCES scenes(id) ON DELETE CASCADE,
+ FOREIGN KEY(generation_job_id) REFERENCES generation_jobs(id) ON DELETE SET NULL
+);
+CREATE TABLE composition_timelines(
+ id TEXT PRIMARY KEY, campaign_id TEXT NOT NULL, storyboard_id TEXT NOT NULL,
+ target_width INTEGER NOT NULL, target_height INTEGER NOT NULL,
+ aspect_ratio TEXT NOT NULL, fps INTEGER NOT NULL, created_at TEXT NOT NULL,
+ FOREIGN KEY(campaign_id) REFERENCES campaigns(id) ON DELETE CASCADE,
+ FOREIGN KEY(storyboard_id) REFERENCES storyboards(id) ON DELETE CASCADE
+);
+"""
+MIGRATION_8_UP += """
+CREATE TABLE composition_timeline_entries(
+ id TEXT PRIMARY KEY, timeline_id TEXT NOT NULL, sequence INTEGER NOT NULL,
+ scene_id TEXT NOT NULL, scene_version_id TEXT, generated_asset_id TEXT,
+ start_ms INTEGER NOT NULL, duration_ms INTEGER NOT NULL,
+ visual_path TEXT NOT NULL, audio_path TEXT,
+ transition_json TEXT NOT NULL DEFAULT '{}', created_at TEXT NOT NULL,
+ FOREIGN KEY(timeline_id) REFERENCES composition_timelines(id) ON DELETE CASCADE,
+ FOREIGN KEY(scene_id) REFERENCES scenes(id) ON DELETE CASCADE,
+ FOREIGN KEY(scene_version_id) REFERENCES scene_versions(id) ON DELETE SET NULL,
+ FOREIGN KEY(generated_asset_id) REFERENCES generated_assets(id) ON DELETE SET NULL,
+ UNIQUE(timeline_id, sequence)
+);
+CREATE TABLE render_jobs(
+ id TEXT PRIMARY KEY, timeline_id TEXT NOT NULL, render_identity TEXT NOT NULL UNIQUE,
+ status TEXT NOT NULL DEFAULT 'PENDING' CHECK(status IN ('PENDING','RUNNING','SUCCEEDED','FAILED')),
+ output_path TEXT NOT NULL, command_args_json TEXT NOT NULL DEFAULT '[]',
+ ffmpeg_path TEXT NOT NULL, ffmpeg_version TEXT NOT NULL,
+ started_at TEXT, finished_at TEXT, exit_code INTEGER,
+ stdout_summary TEXT, stderr_summary TEXT, output_checksum_sha256 TEXT,
+ probe_json TEXT, error TEXT, created_at TEXT NOT NULL, updated_at TEXT NOT NULL,
+ FOREIGN KEY(timeline_id) REFERENCES composition_timelines(id) ON DELETE RESTRICT
+);
+CREATE TABLE render_attempts(
+ id TEXT PRIMARY KEY, render_job_id TEXT NOT NULL, started_at TEXT NOT NULL,
+ finished_at TEXT, exit_code INTEGER, stdout_summary TEXT, stderr_summary TEXT,
+ error TEXT, created_at TEXT NOT NULL,
+ FOREIGN KEY(render_job_id) REFERENCES render_jobs(id) ON DELETE CASCADE
+);
+INSERT INTO schema_migrations(version) VALUES(8);
+"""
+MIGRATION_8_DOWN = """
+DROP TABLE IF EXISTS render_attempts;
+DROP TABLE IF EXISTS render_jobs;
+DROP TABLE IF EXISTS composition_timeline_entries;
+DROP TABLE IF EXISTS composition_timelines;
+DROP TABLE IF EXISTS voice_jobs;
+DELETE FROM schema_migrations WHERE version=8;
+"""
+MIGRATIONS[8] = (MIGRATION_8_UP, MIGRATION_8_DOWN)
