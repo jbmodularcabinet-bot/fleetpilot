@@ -227,7 +227,9 @@ test("Batch 4 owner golden workflow, immutable closeout and cross-tenant attacks
     }),
   ).toBeVisible();
   await expect(
-    page.getByText("ACME Logistics Client", { exact: true }),
+    page
+      .locator("#trip-overview")
+      .getByText("ACME Logistics Client", { exact: true }),
   ).toBeVisible();
   await expect(
     page.getByText("TRK-001 · Juan Dela Cruz", { exact: true }),
