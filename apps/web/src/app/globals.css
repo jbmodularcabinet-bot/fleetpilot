@@ -2293,7 +2293,7 @@ textarea:focus-visible {
   gap: var(--space-3);
 }
 .driver-home-trips .driver-trip-card {
-  border-radius: 18px;
+  border-radius: var(--radius-md);
   padding: var(--space-4);
   box-shadow: 0 8px 22px rgba(8, 17, 31, 0.06);
 }
@@ -2369,7 +2369,7 @@ textarea:focus-visible {
   box-shadow: var(--shadow-sm);
 }
 .driver-trip-card {
-  border-radius: 16px;
+  border-radius: var(--radius-md);
 }
 .driver-trips-screen .driver-trip-card h2 {
   font-size: var(--text-lg);
@@ -2446,7 +2446,7 @@ textarea:focus-visible {
 .driver-progress-card,
 .driver-task-card,
 .driver-issue-card > .card {
-  border-radius: 16px;
+  border-radius: var(--radius-md);
   box-shadow: none;
 }
 .driver-trip-info-card .card-heading,
@@ -2553,7 +2553,7 @@ textarea:focus-visible {
   margin-bottom: var(--space-2);
 }
 .profile > .card {
-  border-radius: 16px;
+  border-radius: var(--radius-md);
   box-shadow: none;
 }
 .bottom-nav {
