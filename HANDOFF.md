@@ -136,3 +136,50 @@ Verification:
 - Batch 0–8 regression: PASS
 
 Next permitted batch: Batch 10 — QA Engine.
+
+
+## Batch 10 — PASS
+
+Implemented deterministic QA over existing verified renders without changing render authority.
+
+Persistence:
+- schema v9
+- qa_runs
+- qa_check_results
+- qa_reviews
+
+Rules:
+- base identity hashes render job/id/checksum + manifest/rule versions
+- canonical attempt 1 reused on repeated/concurrent create
+- explicit ERROR retry creates one immutable successor attempt
+- lifecycle: PENDING → RUNNING → FINALIZED or ERROR
+- artifact defects = FINALIZED / FAIL
+- engine faults = ERROR / NULL result
+- exact precedence: FAIL > WARN > PASS
+- current manifest: 11 stable CRITICAL checks
+- no WARN-producing rule implemented in Batch 10
+- human review remains independent from automated QA
+- QA never triggers rendering
+
+Migration proof:
+- v8 → v9 → v8 → v9 PASS
+- representative Batch 0–9 rows/relationships/checksums/provenance preserved exactly
+- foreign-key checks clean
+
+Controlled proof:
+- source Batch 9 proof copied, never mutated
+- QA run a3df047e-ba08-467c-b248-c0d1ad407064
+- FINALIZED / PASS
+- 11/11 checks PASS
+- repeated create reused same run
+- independent review: PENDING → ACCEPTED
+- render attempt count unchanged
+
+Verification:
+- Batch 10 targeted: 23/23 PASS
+- full backend: 75/75 PASS
+- frontend/UI: 10/10 PASS
+- lint/build: PASS
+- UI changes: none
+
+Next permitted batch: Batch 11.

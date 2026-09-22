@@ -50,3 +50,17 @@ Batch 9 lock:
 - Preview outputs stay under the approved generated-output root and never overwrite source assets.
 - Successful identical render identity is reused; source-file hashes participate in render identity.
 - ffprobe verification, source checksum protection, and 0.20s duration tolerance are required Batch 9 invariants.
+
+
+Batch 10 lock:
+- Deterministic QA is read-only with respect to render provenance and execution.
+- qa_runs owns immutable automated evaluation identity/lifecycle/aggregate result.
+- qa_check_results owns immutable per-check evidence.
+- qa_reviews owns human review state independently.
+- Base QA identity excludes attempt number; explicit ERROR retries share the base identity and receive incremented attempt_version.
+- Repeated create returns canonical attempt 1; repeated retry of one ERROR returns the same direct successor.
+- Required manifest v1 has 11 stable CRITICAL checks.
+- Aggregate precedence is FAIL > WARN > PASS; incomplete/malformed required evidence cannot pass.
+- Artifact defects finalize FAIL; QA engine execution failures end ERROR with null result.
+- Batch 10 defines no WARN-producing rule.
+- QA cannot trigger render/retry/publishing actions.

@@ -444,3 +444,80 @@ DROP TABLE IF EXISTS voice_jobs;
 DELETE FROM schema_migrations WHERE version=8;
 """
 MIGRATIONS[8] = (MIGRATION_8_UP, MIGRATION_8_DOWN)
+
+
+MIGRATION_9_UP = """
+CREATE TABLE qa_runs(
+ id TEXT PRIMARY KEY,
+ render_job_id TEXT NOT NULL,
+ render_identity_snapshot TEXT NOT NULL,
+ render_checksum_snapshot TEXT,
+ manifest_id TEXT NOT NULL,
+ manifest_version TEXT NOT NULL,
+ rule_version TEXT NOT NULL,
+ base_identity_key TEXT NOT NULL,
+ attempt_version INTEGER NOT NULL CHECK(attempt_version >= 1),
+ attempt_identity_key TEXT NOT NULL UNIQUE,
+ retry_of_qa_run_id TEXT,
+ lifecycle_state TEXT NOT NULL DEFAULT 'PENDING'
+   CHECK(lifecycle_state IN ('PENDING','RUNNING','FINALIZED','ERROR')),
+ overall_result TEXT
+   CHECK(overall_result IS NULL OR overall_result IN ('PASS','WARN','FAIL')),
+ required_checks_json TEXT NOT NULL,
+ required_check_count INTEGER NOT NULL CHECK(required_check_count > 0),
+ actual_check_count INTEGER NOT NULL DEFAULT 0 CHECK(actual_check_count >= 0),
+ started_at TEXT,
+ finished_at TEXT,
+ finalized_at TEXT,
+ error_code TEXT,
+ error_message TEXT,
+ created_at TEXT NOT NULL,
+ updated_at TEXT NOT NULL,
+ FOREIGN KEY(render_job_id) REFERENCES render_jobs(id) ON DELETE RESTRICT,
+ FOREIGN KEY(retry_of_qa_run_id) REFERENCES qa_runs(id) ON DELETE RESTRICT,
+ UNIQUE(base_identity_key, attempt_version)
+);
+CREATE UNIQUE INDEX ux_qa_runs_retry_child
+ ON qa_runs(retry_of_qa_run_id) WHERE retry_of_qa_run_id IS NOT NULL;
+CREATE INDEX ix_qa_runs_render ON qa_runs(render_job_id, created_at);
+
+CREATE TABLE qa_check_results(
+ id TEXT PRIMARY KEY,
+ qa_run_id TEXT NOT NULL,
+ check_id TEXT NOT NULL,
+ check_version TEXT NOT NULL,
+ result TEXT NOT NULL CHECK(result IN ('PASS','WARN','FAIL')),
+ severity TEXT NOT NULL CHECK(severity IN ('CRITICAL','NON_CRITICAL')),
+ expected_json TEXT NOT NULL,
+ observed_json TEXT NOT NULL,
+ evidence_json TEXT NOT NULL,
+ message TEXT NOT NULL DEFAULT '',
+ created_at TEXT NOT NULL,
+ FOREIGN KEY(qa_run_id) REFERENCES qa_runs(id) ON DELETE CASCADE,
+ UNIQUE(qa_run_id, check_id)
+);
+
+CREATE TABLE qa_reviews(
+ id TEXT PRIMARY KEY,
+ qa_run_id TEXT NOT NULL UNIQUE,
+ review_state TEXT NOT NULL DEFAULT 'PENDING'
+   CHECK(review_state IN ('PENDING','ACCEPTED','REJECTED')),
+ reviewer_note TEXT NOT NULL DEFAULT '',
+ reviewed_at TEXT,
+ created_at TEXT NOT NULL,
+ FOREIGN KEY(qa_run_id) REFERENCES qa_runs(id) ON DELETE CASCADE
+);
+
+INSERT INTO schema_migrations(version) VALUES(9);
+"""
+
+MIGRATION_9_DOWN = """
+DROP TABLE IF EXISTS qa_reviews;
+DROP TABLE IF EXISTS qa_check_results;
+DROP INDEX IF EXISTS ix_qa_runs_render;
+DROP INDEX IF EXISTS ux_qa_runs_retry_child;
+DROP TABLE IF EXISTS qa_runs;
+DELETE FROM schema_migrations WHERE version=9;
+"""
+
+MIGRATIONS[9] = (MIGRATION_9_UP, MIGRATION_9_DOWN)
