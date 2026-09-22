@@ -24,7 +24,7 @@ from .trip_schemas import VersionInput
 
 router = APIRouter(prefix="/api/v1", tags=["Delivery evidence"])
 Context = Annotated[TenantContext, Depends(tenant)]
-Database = Annotated[AsyncSession, Depends(get_db)]
+Database = Annotated[AsyncSession, Depends(get_db, scope="function")]
 
 
 async def committed(db, result):

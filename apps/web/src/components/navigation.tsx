@@ -1,6 +1,7 @@
 "use client";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
+import { canReport, FILTER_KEYS } from "@/lib/reporting";
 import { useState } from "react";
 import {
   ArrowUpRight,
@@ -23,7 +24,7 @@ import {
   X,
 } from "lucide-react";
 import { FleetPilotLogo, StatusBadge } from "@fleetpilot/ui";
-import { can, homeFor } from "@fleetpilot/auth";
+import { can, homeFor, isClientDemo } from "@fleetpilot/auth";
 import type { Identity } from "@fleetpilot/types";
 import { beforeAccountExit, clearOffline } from "@/lib/offline";
 import { request } from "@/lib/client";
@@ -61,6 +62,13 @@ export function Logout() {
 }
 export function Sidebar({ identity }: { identity: Identity }) {
   const path = usePathname();
+  const search = useSearchParams();
+  const reportScope = new URLSearchParams();
+  FILTER_KEYS.forEach((key) => {
+    const value = search.get(key);
+    if (value) reportScope.set(key, value);
+  });
+  const reportingSuffix = reportScope.size ? `?${reportScope.toString()}` : "";
   const [open, setOpen] = useState(false);
   const future = [
     [Route, "Operations"],
@@ -89,7 +97,7 @@ export function Sidebar({ identity }: { identity: Identity }) {
           {can(identity, "owner_dashboard.view") && (
             <Link
               className={`nav-item ${path === "/dashboard" ? "selected" : ""}`}
-              href="/dashboard"
+              href={"/dashboard" + reportingSuffix}
               onClick={() => setOpen(false)}
             >
               <Gauge size={19} />
@@ -148,6 +156,21 @@ export function Sidebar({ identity }: { identity: Identity }) {
                   </Link>
                 )}
               </div>
+            ) : label === "Intelligence" || label === "Reports" ? (
+              canReport(identity) ? (
+                <Link
+                  key={label}
+                  className={`nav-item ${path.startsWith(label === "Intelligence" ? "/intelligence" : "/reports") ? "selected" : ""}`}
+                  href={
+                    (label === "Intelligence" ? "/intelligence" : "/reports") +
+                    reportingSuffix
+                  }
+                  onClick={() => setOpen(false)}
+                >
+                  <Icon size={19} />
+                  {label}
+                </Link>
+              ) : null
             ) : (
               <button
                 className="nav-item"
@@ -161,14 +184,16 @@ export function Sidebar({ identity }: { identity: Identity }) {
               </button>
             ),
           )}
-          <Link
-            className={`nav-item ${path.startsWith("/settings") ? "selected" : ""}`}
-            href="/settings/organization"
-            onClick={() => setOpen(false)}
-          >
-            <Settings size={19} />
-            Settings
-          </Link>
+          {!isClientDemo(identity) && (
+            <Link
+              className={`nav-item ${path.startsWith("/settings") ? "selected" : ""}`}
+              href="/settings/organization"
+              onClick={() => setOpen(false)}
+            >
+              <Settings size={19} />
+              Settings
+            </Link>
+          )}
         </nav>
         <div className="sidebar-bottom">
           <div className="sidebar-note">

@@ -14,7 +14,7 @@ import type { Identity } from "@fleetpilot/types";
 import { DriverTrips } from "@/components/trips";
 export function DriverHomeContent({ identity }: { identity: Identity }) {
   return (
-    <>
+    <div className="driver-home">
       <div className="driver-brand">
         <FleetPilotLogo compact />
         <span>DRIVER APP</span>
@@ -41,9 +41,11 @@ export function DriverHomeContent({ identity }: { identity: Identity }) {
           </button>
         </header>
         <div className="driver-section-label">
-          <span>YOUR ASSIGNED TRIPS</span>
+          <span>CURRENT TRIP</span>
         </div>
-        <DriverTrips compact />
+        <div className="driver-home-trips">
+          <DriverTrips compact />
+        </div>
         {can(identity, "driver_defect.create_own") && <DriverDefect />}
         <div className="driver-shortcuts">
           {[
@@ -67,6 +69,6 @@ export function DriverHomeContent({ identity }: { identity: Identity }) {
           </span>
         </div>
       </div>
-    </>
+    </div>
   );
 }

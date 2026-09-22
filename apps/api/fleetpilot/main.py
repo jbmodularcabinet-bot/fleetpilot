@@ -25,6 +25,7 @@ from .maintenance_routes import router as maintenance_router
 from .master_routes import router as master_router
 from .rate_limits import category_for, consume
 from .rate_limits import login_windows as login_windows
+from .reporting_routes import router as reporting_router
 from .routes import router
 from .s3_storage import StorageUnavailable
 from .sync_routes import router as sync_router
@@ -192,7 +193,7 @@ async def check_ready():
     settings.validate_runtime()
     async with Session() as session:
         revision = await session.scalar(text("SELECT version_num FROM alembic_version"))
-        if revision != "0012_legacy_financial_review":
+        if revision != "0013_legacy_review_guards":
             raise RuntimeError("Database schema is incompatible")
         if settings.rate_limit_backend == "postgres":
             await session.execute(text("SELECT 1 FROM request_rate_windows LIMIT 1"))
@@ -207,3 +208,5 @@ async def ready():
         emit("readiness.failed")
         return JSONResponse({"status": "not_ready"}, status_code=503)
     return {"status": "ready"}
+
+app.include_router(reporting_router)

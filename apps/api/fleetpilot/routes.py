@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from .audit import record
 from .auth import current_user
+from .client_demo_access import CLIENT_DEMO_ACCESS_PROFILE, is_client_demo_membership
 from .config import get_settings
 from .db import get_db
 from .models import AuditLog, Membership, Organization, User
@@ -26,12 +27,20 @@ def organization_dict(org: Organization) -> dict:
 
 
 @router.get("/me")
-async def me(ctx: TenantContext = Depends(tenant), db: AsyncSession = Depends(get_db)):
+async def me(
+    ctx: TenantContext = Depends(tenant), db: AsyncSession = Depends(get_db, scope="function")
+):
     organizations = [organization_dict(org) for _, org in await memberships_for(db, ctx.user)]
     return {
         "user": {"id": str(ctx.user.id), "name": ctx.user.name, "email": ctx.user.email},
         "organization": organization_dict(ctx.organization),
-        "membership": {"id": str(ctx.membership.id), "role": ctx.membership.role},
+        "membership": {
+            "id": str(ctx.membership.id),
+            "role": ctx.membership.role,
+            "access_profile": CLIENT_DEMO_ACCESS_PROFILE
+            if is_client_demo_membership(ctx.membership.permissions_json)
+            else None,
+        },
         "permissions": sorted(ctx.permissions),
         "organizations": organizations,
     }
@@ -42,7 +51,7 @@ async def select_organization(
     payload: OrganizationSelection,
     response: Response,
     user: User = Depends(current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     ctx = await resolve_tenant(db, user, str(payload.organization_id))
     response.set_cookie(
@@ -70,7 +79,7 @@ async def update_organization(
     payload: OrganizationUpdate,
     request: Request,
     ctx: TenantContext = Depends(tenant),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     ctx.require("organization.manage")
     if organization_id != ctx.organization.id:
@@ -101,7 +110,7 @@ async def update_organization(
 @router.get("/memberships")
 async def list_memberships(
     ctx: TenantContext = Depends(tenant),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
     limit: int = Query(50, ge=1, le=100),
     offset: int = Query(0, ge=0),
 ):
@@ -143,7 +152,7 @@ async def lock_organization(db: AsyncSession, ctx: TenantContext):
 async def add_membership(
     payload: MembershipCreate,
     ctx: TenantContext = Depends(tenant),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     ctx.require("users.manage")
     await lock_organization(db, ctx)
@@ -186,7 +195,7 @@ async def update_membership(
     membership_id: uuid.UUID,
     payload: MembershipUpdate,
     ctx: TenantContext = Depends(tenant),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     ctx.require("users.manage")
     await lock_organization(db, ctx)
@@ -229,7 +238,7 @@ async def update_membership(
 @router.get("/audit-logs")
 async def audit_logs(
     ctx: TenantContext = Depends(tenant),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
     limit: int = Query(50, ge=1, le=100),
     offset: int = Query(0, ge=0),
     entity_type: str | None = Query(None, max_length=40),

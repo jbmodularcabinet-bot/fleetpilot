@@ -1,3 +1,4 @@
+import json
 from functools import lru_cache
 from typing import Literal
 from urllib.parse import urlparse
@@ -11,6 +12,7 @@ class Settings(BaseSettings):
         env_file="../../.env", extra="ignore", hide_input_in_errors=True
     )
     environment: Literal["development", "test", "production"] = "development"
+    reporting_synthetic_trips_json: str = "{}"
     database_url: str
     migration_database_url: str | None = None
     web_origin: str = "http://localhost:3000"
@@ -38,6 +40,22 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def secure_production(self):
+        if self.environment == "production" and self.reporting_synthetic_trips_json != "{}":
+            raise ValueError("Local synthetic reporting configuration is prohibited in production")
+        try:
+            manifest = json.loads(self.reporting_synthetic_trips_json)
+            if not isinstance(manifest, dict) or len(manifest) > 100:
+                raise ValueError("Invalid synthetic manifest")
+            from uuid import UUID
+
+            for organization, identifiers in manifest.items():
+                UUID(organization)
+                if not isinstance(identifiers, list) or len(identifiers) > 5000:
+                    raise ValueError("Invalid synthetic trip list")
+                for identifier in identifiers:
+                    UUID(identifier)
+        except (ValueError, TypeError, AttributeError) as exc:
+            raise ValueError("Invalid synthetic reporting configuration") from exc
         parsed = urlparse(self.web_origin)
         if not parsed.netloc or parsed.path not in ("", "/"):
             raise ValueError("WEB_ORIGIN must be an origin without a path")
@@ -100,7 +118,7 @@ class Settings(BaseSettings):
 
     @property
     def cookie_secure(self) -> bool:
-        return self.environment == "production"
+        return self.environment == "production" or self.web_origin.startswith("https://")
 
 
 @lru_cache

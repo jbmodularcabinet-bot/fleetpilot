@@ -173,7 +173,7 @@ export function FinancialPanel({
   identity,
   revision,
 }: {
-  trip: TripRecord;
+  trip: Pick<TripRecord, "id" | "version" | "current_status">;
   identity: Identity;
   revision: number;
 }) {

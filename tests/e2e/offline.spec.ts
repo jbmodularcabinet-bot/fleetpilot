@@ -579,7 +579,8 @@ test("Twenty queued commands and photos survive a compatible worker update", asy
     .click();
   await expect(page.getByText(/20 actions saved locally/)).toBeVisible();
   const before = await (
-    await page.request.get(`/api/v1/driver/trips/${trip.id}`)
+    // Retry only a reset transport connection, never an HTTP error or mutation.
+    await page.request.get(`/api/v1/driver/trips/${trip.id}`, { maxRetries: 2 })
   ).json();
   expect(before.current_status).toBe("DISPATCHED");
   // Hold the same browser lock so reconnect cannot drain the queue during the update check.
@@ -657,12 +658,11 @@ test("Supported background sync processes a queue with the Driver page closed", 
   await page.close();
   await context.setOffline(false);
   const worker = context.serviceWorkers()[0];
-  expect(
-    await worker.evaluate(() => ({
-      online: navigator.onLine,
-      locks: !!navigator.locks,
-    })),
-  ).toEqual({ online: true, locks: true });
+  // BrowserContext connectivity changes propagate asynchronously to the worker.
+  await expect.poll(() => worker.evaluate(() => ({
+    online: navigator.onLine,
+    locks: !!navigator.locks,
+  }))).toEqual({ online: true, locks: true });
   const workerErrors: string[] = [];
   context.on("console", (message) => {
     if (message.type() === "error") workerErrors.push(message.text());
@@ -706,6 +706,18 @@ test("Lost successful response retries the same command without duplicate milest
   const trip = await prepare(page, fixture, "dispatch");
   await login(page, fixture.driver_email, true);
   await readyOffline(page, trip);
+  // This case injects a lost foreground response through page.route. Automatic
+  // background sync uses a different network context and bypasses that route.
+  // Its real worker behavior remains covered by the preceding dedicated case.
+  await page.evaluate(async () => {
+    const registration = await navigator.serviceWorker.ready;
+    const manager = (registration as ServiceWorkerRegistration & {
+      sync?: { register(tag: string): Promise<void> };
+    }).sync;
+    if (manager) Object.defineProperty(Object.getPrototypeOf(manager), "register", {
+      value: () => Promise.resolve(), configurable: true,
+    });
+  });
   const keys: string[] = [];
   let dropped = false;
   await page.route(

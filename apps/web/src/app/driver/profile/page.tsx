@@ -10,9 +10,11 @@ export default async function Profile() {
         title="Profile"
         description="Your information in one place."
       />
-      <div className="profile-avatar">{identity.user.name[0]}</div>
-      <h2>{identity.user.name}</h2>
-      <StatusBadge tone="active">Driver</StatusBadge>
+      <div className="driver-profile-hero">
+        <div className="profile-avatar">{identity.user.name[0]}</div>
+        <h2>{identity.user.name}</h2>
+        <StatusBadge tone="active">Driver</StatusBadge>
+      </div>
       <Card title="Your account">
         <dl>
           <dt>Email</dt>

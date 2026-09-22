@@ -139,3 +139,48 @@ async def test_outstanding_advance_remains_a_blocker_after_legacy_review(client)
     assert "Cash advance remains outstanding." in current["blockers"]
     assert (await approve(client, trip)).status_code == 409
     assert (await financial(client, trip))["status"] == "PROVISIONAL"
+
+
+async def test_acceptance_refreshes_snapshot_and_duplicate_conflicts(client):
+    trip, ids = await legacy_fixture(client)
+    stale = (await state(client, trip))["latest_event_id"]
+    for identifier in ids:
+        assert (await accept(client, identifier)).status_code == 200
+    assert (await state(client, trip))["latest_event_id"] != stale
+    response = await post(client, f"/trips/{trip['id']}/financial-review/approve",
+                          {"expected_event_id": stale, "records_confirmed": True})
+    assert response.status_code == 409
+    assert (await accept(client, ids[0])).status_code == 409
+    assert (await approve(client, trip)).status_code == 200
+    original = (await client.get(f"/api/v1/expenses/{ids[0]}")).json()
+    assert original["status"] == "SUBMITTED"
+    assert (await client.get(f"/api/v1/trips/{trip['id']}")).json()["current_status"] == "COMPLETED"
+
+
+@pytest.mark.parametrize("role", ["DRIVER", "DISPATCHER", "MAINTENANCE"])
+async def test_legacy_direct_rls_denies_nonfinancial_roles(client, admin_db, role):
+    _, ids = await legacy_fixture(client)
+    assert (await accept(client, ids[0])).status_code == 200
+    me = (await client.get("/api/v1/me")).json()
+    await admin_db.execute(text("UPDATE organization_memberships SET role=:role WHERE user_id=:id"),
+                           dict(role=role, id=uuid.UUID(me["user"]["id"])))
+    await admin_db.commit()
+    async with Session() as db:
+        await set_context(db, me["user"]["id"], me["organization"]["id"])
+        assert await db.scalar(text("SELECT count(*) FROM legacy_expense_review_events")) == 0
+
+
+@pytest.mark.parametrize("denied", ["fuel.review", "expenses.review", "financial_review.read"])
+async def test_legacy_restrictive_permissions_at_api_and_database(client, admin_db, denied):
+    trip, ids = await legacy_fixture(client)
+    me = (await client.get("/api/v1/me")).json()
+    await admin_db.execute(text("UPDATE organization_memberships SET permissions_json=jsonb_build_object('deny',jsonb_build_array(CAST(:cap AS text))) WHERE user_id=:id"),
+                           dict(cap=denied, id=uuid.UUID(me["user"]["id"])))
+    await admin_db.commit()
+    assert (await accept(client, ids[0])).status_code == 403
+    async with Session() as db:
+        await set_context(db, me["user"]["id"], me["organization"]["id"])
+        with pytest.raises(DBAPIError):
+            async with db.begin_nested():
+                await db.execute(text("INSERT INTO legacy_expense_review_events(id,organization_id,trip_id,expense_id,created_by) VALUES(:id,:org,:trip,:expense,:actor)"),
+                                 dict(id=uuid.uuid4(), org=uuid.UUID(me["organization"]["id"]), trip=uuid.UUID(trip["id"]), expense=uuid.UUID(ids[0]), actor=uuid.UUID(me["user"]["id"])))

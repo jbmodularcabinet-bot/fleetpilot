@@ -1,3 +1,7 @@
+> Current 19 September result: **CONDITIONAL PASS — 473/473 local tests, DESIGN LOCK PASS.** See [resumed verification](BATCH-15-RESUMPTION.md) for current results and external UNVERIFIED items.
+
+> Historical execution record. Current source audit, fixes and 19 September verification are recorded in [BATCH-15-RESUMPTION.md](BATCH-15-RESUMPTION.md). Earlier statements about missing Git/CI/Docker are superseded by the dated evidence there.
+
 # FleetPilot Batch 15 Report — In Progress
 
 Current classification: CONDITIONAL PASS / release hardening in progress.

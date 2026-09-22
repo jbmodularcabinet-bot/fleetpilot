@@ -14,7 +14,7 @@ import {
   StatusBadge,
   DriverPrimaryAction,
 } from "@fleetpilot/ui";
-import { can } from "@fleetpilot/auth";
+import { can, isClientDemo } from "@fleetpilot/auth";
 import type { Identity } from "@fleetpilot/types";
 import { queueTransition, sync } from "@/lib/offline";
 import { request } from "@/lib/client";
@@ -225,10 +225,10 @@ export function DispatchBoard({ identity }: { identity: Identity }) {
     revision,
   );
   return (
-    <>
+    <div className="operations-workspace">
       <PageHeader
-        title="Dispatch Board"
-        description="Plan the work. Keep every delivery moving."
+        title="Operations"
+        description="Dispatch from verified trip records. Live location appears only when connected telemetry is available."
       >
         {can(identity, "trips.create") && (
           <Link className="button primary" href="/trips/new">
@@ -237,9 +237,59 @@ export function DispatchBoard({ identity }: { identity: Identity }) {
           </Link>
         )}
       </PageHeader>
-      {can(identity, "trip_profitability.read") && (
-        <Link href="/trips/profitability">View trip contribution</Link>
-      )}
+      <section
+        className="operations-visibility"
+        aria-labelledby="live-fleet-heading"
+      >
+        <div className="operations-visibility-copy">
+          <span className="eyebrow">LIVE FLEET</span>
+          <div className="operations-visibility-title">
+            <span className="icon-box icon-box-active">
+              <MapPin size={19} />
+            </span>
+            <div>
+              <h2 id="live-fleet-heading">Location visibility</h2>
+              <p>
+                Live GPS telemetry is not connected in this release. FleetPilot
+                does not infer truck positions from dispatch records.
+              </p>
+            </div>
+          </div>
+          <div className="operations-visibility-status">
+            <StatusBadge>Telemetry not connected</StatusBadge>
+            <span className="small muted">
+              Dispatch and trip history remain the verified operational source.
+            </span>
+          </div>
+        </div>
+        <div
+          className="operations-map-empty"
+          role="img"
+          aria-label="Live fleet map unavailable until verified GPS telemetry is connected"
+        >
+          <div className="operations-map-grid" aria-hidden="true" />
+          <div className="operations-map-message">
+            <MapPin size={26} />
+            <strong>No fabricated truck positions</strong>
+            <span>
+              Connect validated location telemetry before showing live vehicles
+              or route movement.
+            </span>
+          </div>
+        </div>
+      </section>
+      <div className="operations-section-heading">
+        <div>
+          <span className="eyebrow">DISPATCH</span>
+          <h2>Dispatch Board</h2>
+          <p>Plan assigned work, schedules, drivers and trip status.</p>
+        </div>
+        {can(identity, "trip_profitability.read") && (
+          <Link className="button secondary" href="/trips/profitability">
+            View trip contribution
+          </Link>
+        )}
+      </div>
       <nav className="trip-views" aria-label="Dispatch views">
         {[
           ["today", "Today"],
@@ -263,7 +313,7 @@ export function DispatchBoard({ identity }: { identity: Identity }) {
           </button>
         ))}
       </nav>
-      <Card className="master-card">
+      <Card className="master-card dispatch-card">
         <form
           className="master-toolbar"
           onSubmit={(e) => {
@@ -421,8 +471,8 @@ export function DispatchBoard({ identity }: { identity: Identity }) {
             icon={<Truck />}
           />
         ) : (
-          <div className="table-scroll">
-            <table>
+          <div className="table-scroll dispatch-table-wrap">
+            <table className="dispatch-table">
               <caption className="sr-only">Dispatch trips</caption>
               <thead>
                 <tr>
@@ -479,7 +529,7 @@ export function DispatchBoard({ identity }: { identity: Identity }) {
           <Pagination data={data} offset={offset} onChange={setOffset} />
         )}
       </Card>
-    </>
+    </div>
   );
 }
 
@@ -742,7 +792,7 @@ export function TripDetail({
   if (!trip) return <LoadingState />;
   const closed = ["COMPLETED", "CANCELLED"].includes(trip.current_status);
   return (
-    <div className={own ? "driver-content" : ""}>
+    <div className={own ? "driver-content driver-trip-detail" : "trip-command-workspace"}>
       <Link className="master-back" href={own ? "/driver/trips" : "/dispatch"}>
         <ArrowLeft size={16} />
         Back to {own ? "your trips" : "dispatch"}
@@ -762,6 +812,48 @@ export function TripDetail({
             )}
         </div>
       </PageHeader>
+      {!own && (
+        <>
+          <section className="trip-command-summary" aria-label="Trip route summary">
+            <div className="trip-command-route">
+              <span className="eyebrow">ROUTE</span>
+              <strong>
+                <span>{trip.pickup_name}</span>
+                <ArrowRight size={18} aria-hidden="true" />
+                <span>{trip.delivery_name}</span>
+              </strong>
+              <small>Scheduled pickup · {dateLabel(trip.scheduled_pickup_at)}</small>
+            </div>
+            <div className="trip-command-facts">
+              <div>
+                <span>Customer</span>
+                <strong>{trip.customer_name}</strong>
+              </div>
+              <div>
+                <span>Vehicle</span>
+                <strong>{trip.vehicle_unit ?? "Unassigned"}</strong>
+              </div>
+              <div>
+                <span>Driver</span>
+                <strong>{trip.driver_name ?? "No driver"}</strong>
+              </div>
+            </div>
+          </section>
+          <nav className="trip-section-nav" aria-label="Trip sections">
+            <a href="#trip-overview">Overview</a>
+            <a href="#trip-tracking">Tracking</a>
+            {can(identity, "expenses.read") && <a href="#trip-expenses">Expenses</a>}
+            {can(identity, "pod.read") && <a href="#trip-pod">POD</a>}
+            {can(identity, "trip_financials.read") &&
+              can(identity, "trip_profitability.read") && (
+                <a href="#trip-financial">Financial</a>
+              )}
+            {(!isClientDemo(identity) || can(identity, "audit.read")) && (
+              <a href="#trip-activity">Activity</a>
+            )}
+          </nav>
+        </>
+      )}
       {message && (
         <p role="status" className="success-message">
           {message}
@@ -790,7 +882,9 @@ export function TripDetail({
         !closed &&
         can(identity, "driver_defect.create_own") &&
         trip.vehicle_id && (
-          <DriverDefect vehicle={trip.vehicle_id} trip={trip.id} />
+          <div className="driver-issue-card">
+            <DriverDefect vehicle={trip.vehicle_id} trip={trip.id} />
+          </div>
         )}
       {closed && (
         <p className="trip-notice">
@@ -799,23 +893,32 @@ export function TripDetail({
             : "Trip cancelled. It cannot be resumed."}
         </p>
       )}
-      {can(identity, own ? "driver_pod.read_own" : "pod.read") && (
+      {own && can(identity, "driver_pod.read_own") && (
         <DeliveryPanel
           trip={trip}
           identity={identity}
           own={own}
           onChanged={() => {
             setMessage(
-              own
-                ? "Saved work retained. Check sync status for server confirmation."
-                : "Delivery record saved successfully.",
+              "Saved work retained. Check sync status for server confirmation.",
             );
             setRevision((value) => value + 1);
           }}
         />
       )}
-      <div className="trip-detail-grid">
-        <Card className="master-card" title="Trip details">
+      <section
+        id={own ? undefined : "trip-overview"}
+        className={own ? "driver-trip-overview" : "trip-section"}
+      >
+        <div
+          className={
+            own ? "trip-detail-grid driver-trip-detail-grid" : "trip-detail-grid"
+          }
+        >
+        <Card
+          className={own ? "master-card driver-trip-info-card" : "master-card"}
+          title="Trip details"
+        >
           <dl className="master-fields">
             <div>
               <dt>Customer</dt>
@@ -889,8 +992,17 @@ export function TripDetail({
           </dl>
         </Card>
         <div className="trip-side">
-          <Card title="Next action" className="master-card">
-            {trip.next_action ? (
+          <Card
+            title="Next action"
+            className={
+              own ? "master-card driver-next-action-card" : "master-card"
+            }
+          >
+            {trip.next_action &&
+            can(
+              identity,
+              own ? "driver_trip.transition_own" : "trips.transition",
+            ) ? (
               <>
                 <p className="small muted">
                   Current milestone: {human(trip.current_milestone)}
@@ -1038,7 +1150,19 @@ export function TripDetail({
             )}
         </div>
       </div>
-      <Card title="Milestone timeline" className="master-card audit-history">
+      </section>
+      <section
+        id={own ? undefined : "trip-tracking"}
+        className={own ? "driver-trip-progress" : "trip-section"}
+      >
+        <Card
+          title="Milestone timeline"
+          className={
+            own
+              ? "master-card audit-history driver-progress-card"
+              : "master-card audit-history"
+          }
+        >
         {timelineError ? (
           <ErrorState message={timelineError} />
         ) : !timeline ? (
@@ -1064,24 +1188,52 @@ export function TripDetail({
           </ol>
         )}
       </Card>
+      </section>
       {can(identity, own ? "driver_expense.read_own" : "expenses.read") && (
-        <ExpensesPanel
-          trip={trip}
-          identity={identity}
-          own={own}
-          onChanged={() => setRevision((v) => v + 1)}
-        />
+        <section
+          id={own ? undefined : "trip-expenses"}
+          className={own ? "driver-trip-expenses" : "trip-section"}
+        >
+          <ExpensesPanel
+            trip={trip}
+            identity={identity}
+            own={own}
+            onChanged={() => setRevision((v) => v + 1)}
+          />
+        </section>
+      )}
+      {!own && can(identity, "pod.read") && (
+        <section id="trip-pod" className="trip-section">
+          <DeliveryPanel
+            trip={trip}
+            identity={identity}
+            own={false}
+            onChanged={() => {
+              setMessage("Delivery record saved successfully.");
+              setRevision((value) => value + 1);
+            }}
+          />
+        </section>
       )}
       {!own &&
         can(identity, "trip_profitability.read") &&
         can(identity, "trip_financials.read") &&
         can(identity, "expenses.read") && (
-          <FinancialPanel trip={trip} identity={identity} revision={revision} />
+          <section id="trip-financial" className="trip-section">
+            <FinancialPanel trip={trip} identity={identity} revision={revision} />
+          </section>
         )}
-      {!own && <TripAssignmentHistory id={id} revision={revision} />}
-      {!own && can(identity, "audit.read") && (
-        <TripAudit id={id} revision={revision} />
-      )}
+      {!own &&
+        (!isClientDemo(identity) || can(identity, "audit.read")) && (
+          <section id="trip-activity" className="trip-section trip-activity-stack">
+            {!isClientDemo(identity) && (
+              <TripAssignmentHistory id={id} revision={revision} />
+            )}
+            {can(identity, "audit.read") && (
+              <TripAudit id={id} revision={revision} />
+            )}
+          </section>
+        )}
     </div>
   );
 }
@@ -1239,7 +1391,11 @@ export function DriverTrips({ compact = false }: { compact?: boolean }) {
     revision,
   );
   return (
-    <div className={compact ? "" : "driver-content"}>
+    <div
+      className={
+        compact ? "driver-home-trip-list" : "driver-content driver-trips-screen"
+      }
+    >
       {!compact && (
         <PageHeader
           title="Your trips"
@@ -1296,7 +1452,7 @@ export function DriverTrips({ compact = false }: { compact?: boolean }) {
       ) : (
         <div className="driver-trip-list">
           {data.items.map((trip) => (
-            <Card className="current-trip" key={trip.id}>
+            <Card className="current-trip driver-trip-card" key={trip.id}>
               <div className="trip-card-title">
                 <strong>{trip.trip_number}</strong>
                 <TripBadge value={trip.current_status} />
