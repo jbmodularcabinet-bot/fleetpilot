@@ -545,7 +545,14 @@ export function DeliveryPanel({
   }
   if (!history && !error) return <LoadingState />;
   return (
-    <Card title="Delivery evidence" className="master-card delivery-panel">
+    <Card
+      title="Delivery evidence"
+      className={
+        own
+          ? "master-card delivery-panel driver-task-card driver-pod-card"
+          : "master-card delivery-panel"
+      }
+    >
       {own && localMessage && (
         <p role="status" className="trip-notice">
           {localMessage}

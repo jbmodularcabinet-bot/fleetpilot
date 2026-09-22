@@ -463,7 +463,14 @@ export function ExpensesPanel({
     onChanged();
   };
   return (
-    <Card className="master-card expense-panel" title="Trip expenses">
+    <Card
+      className={
+        own
+          ? "master-card expense-panel driver-task-card driver-expense-card"
+          : "master-card expense-panel"
+      }
+      title="Trip expenses"
+    >
       {notice && (
         <p role="status" className="success-banner">
           {notice}

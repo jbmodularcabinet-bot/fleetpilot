@@ -2226,3 +2226,357 @@ textarea:focus-visible {
   .trip-command-facts { grid-template-columns: 1fr 1fr; }
   .trip-command-facts > div:last-child { grid-column: 1 / -1; }
 }
+
+/* Driver App presentation convergence: scoped to existing Driver surfaces only. */
+.driver-home {
+  min-height: 100%;
+  background: var(--cloud);
+}
+.driver-home .driver-brand {
+  height: 58px;
+  padding: var(--space-3) var(--space-4);
+  background: var(--white);
+  color: var(--muted);
+  border-bottom: 1px solid var(--border);
+}
+.driver-home .driver-brand .brand {
+  transform: scale(0.88);
+  transform-origin: left center;
+}
+.driver-content[aria-label="Connection and sync status"] {
+  padding: 10px var(--space-4) 0;
+}
+.driver-content[aria-label="Connection and sync status"] > p:first-child {
+  display: inline-flex;
+  width: 100%;
+  min-height: 32px;
+  align-items: center;
+  padding: 7px 10px;
+  border: 1px solid color-mix(in srgb, var(--positive-text) 16%, var(--border));
+  border-radius: 10px;
+  background: var(--positive-bg);
+  color: var(--positive-text);
+}
+.driver-home > .driver-content {
+  padding-top: var(--space-4);
+}
+.driver-home .driver-header {
+  margin-bottom: var(--space-5);
+}
+.driver-home .driver-header .avatar {
+  width: 48px;
+  height: 48px;
+  background: var(--active-bg);
+  color: var(--blue);
+  border: 1px solid color-mix(in srgb, var(--blue) 15%, var(--border));
+}
+.driver-home .driver-header p {
+  color: var(--muted);
+  font-size: var(--text-xs);
+}
+.driver-home .driver-header h1 {
+  font-size: 22px;
+  letter-spacing: -0.035em;
+}
+.driver-home .driver-header .icon-button {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: 50%;
+}
+.driver-home .driver-section-label {
+  margin-top: 0;
+  color: var(--text);
+  font-size: 10px;
+  letter-spacing: 0.09em;
+}
+.driver-home-trips .driver-trip-list {
+  gap: var(--space-3);
+}
+.driver-home-trips .driver-trip-card {
+  border-radius: 18px;
+  padding: var(--space-4);
+  box-shadow: 0 8px 22px rgba(8, 17, 31, 0.06);
+}
+.driver-home-trips .driver-trip-card .trip-card-title strong {
+  font-size: var(--text-lg);
+}
+.driver-home-trips .driver-trip-card h2 {
+  font-size: var(--text-lg);
+  margin-top: 2px;
+}
+.driver-home-trips .driver-trip-card .route-placeholder {
+  margin: var(--space-4) 0;
+  gap: var(--space-4);
+}
+.driver-home-trips .driver-trip-card .stop-dot {
+  border-color: var(--positive-text);
+}
+.driver-home-trips .driver-trip-card .route-placeholder > div:last-child svg {
+  color: var(--red);
+}
+.driver-home-trips .driver-trip-card .driver-cta,
+.driver-trip-detail .driver-next-action-card .driver-cta,
+.driver-trip-detail .driver-pod-card .button.primary,
+.driver-trip-detail .driver-expense-card .button.primary {
+  background: var(--mint);
+  color: var(--navy);
+  border-color: var(--mint);
+  font-weight: 700;
+}
+.driver-shortcuts {
+  gap: var(--space-3);
+}
+.driver-shortcuts button {
+  min-height: 76px;
+  border-radius: 14px;
+  color: var(--slate);
+  background: var(--white);
+}
+.driver-shortcuts button:disabled {
+  opacity: 0.72;
+}
+.driver-shortcuts button:nth-child(1) svg {
+  color: var(--blue);
+}
+.driver-shortcuts button:nth-child(3) svg {
+  color: var(--red);
+}
+.driver-safety {
+  padding: var(--space-4);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--mint) 7%, var(--white));
+}
+.driver-trips-screen > .page-heading {
+  margin-bottom: var(--space-4);
+}
+.driver-trips-screen > .page-heading h1 {
+  font-size: 22px;
+}
+.driver-trips-screen .trip-views {
+  padding: 4px;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--border) 40%, var(--white));
+}
+.driver-trips-screen .trip-views button {
+  flex: 1 1 0;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+}
+.driver-trips-screen .trip-views button[aria-pressed="true"] {
+  background: var(--white);
+  color: var(--navy);
+  box-shadow: var(--shadow-sm);
+}
+.driver-trip-card {
+  border-radius: 16px;
+}
+.driver-trips-screen .driver-trip-card h2 {
+  font-size: var(--text-lg);
+}
+.driver-trip-detail {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding-top: var(--space-3);
+}
+.driver-trip-detail > .master-back {
+  order: 0;
+  margin-bottom: 0;
+  font-size: var(--text-xs);
+  color: var(--muted);
+}
+.driver-trip-detail > .page-heading {
+  order: 1;
+  align-items: flex-start;
+  margin: 0 0 var(--space-1);
+  padding-bottom: var(--space-4);
+  border-bottom: 1px solid var(--border);
+}
+.driver-trip-detail > .page-heading h1 {
+  font-size: 21px;
+}
+.driver-trip-detail > .page-heading p {
+  margin-top: 4px;
+  color: var(--navy);
+  font-weight: 650;
+}
+.driver-trip-detail > .page-heading .master-actions {
+  align-self: flex-start;
+}
+.driver-trip-detail > .success-message,
+.driver-trip-detail > .trip-notice {
+  order: 2;
+}
+.driver-trip-detail > .driver-trip-overview {
+  order: 3;
+}
+.driver-trip-detail > .driver-trip-progress {
+  order: 4;
+}
+.driver-trip-detail > .driver-pod-card {
+  order: 5;
+}
+.driver-trip-detail > .driver-trip-expenses {
+  order: 6;
+}
+.driver-trip-detail > .driver-issue-card {
+  order: 7;
+}
+.driver-trip-detail-grid {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin-top: 0;
+}
+.driver-trip-detail-grid > .trip-side {
+  order: -1;
+}
+.driver-next-action-card {
+  border-color: color-mix(in srgb, var(--mint) 34%, var(--border));
+  box-shadow: 0 8px 20px rgba(43, 224, 167, 0.08);
+}
+.driver-next-action-card .card-heading {
+  margin-bottom: var(--space-3);
+}
+.driver-next-action-card .driver-cta {
+  margin-top: var(--space-3);
+}
+.driver-trip-info-card,
+.driver-progress-card,
+.driver-task-card,
+.driver-issue-card > .card {
+  border-radius: 16px;
+  box-shadow: none;
+}
+.driver-trip-info-card .card-heading,
+.driver-progress-card .card-heading,
+.driver-task-card .card-heading {
+  margin-bottom: var(--space-4);
+}
+.driver-trip-info-card .master-fields {
+  gap: 0;
+}
+.driver-trip-info-card .master-fields > div {
+  display: grid;
+  grid-template-columns: minmax(92px, 0.75fr) minmax(0, 1.25fr);
+  gap: var(--space-3);
+  padding: 11px 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+}
+.driver-trip-info-card .master-fields > div:last-child {
+  border-bottom: 0;
+}
+.driver-trip-info-card .master-fields dt {
+  color: var(--muted);
+}
+.driver-trip-info-card .master-fields dd {
+  margin: 0;
+  color: var(--navy);
+  font-weight: 600;
+}
+.driver-progress-card.audit-history {
+  margin-top: 0;
+}
+.driver-progress-card .trip-timeline li {
+  gap: var(--space-3);
+  padding-bottom: var(--space-4);
+}
+.driver-progress-card .trip-timeline li:not(:last-child):before {
+  border-left: 2px solid color-mix(in srgb, var(--positive-text) 38%, var(--border));
+}
+.driver-progress-card .timeline-dot {
+  width: 16px;
+  height: 16px;
+  border-width: 4px;
+  margin-top: 2px;
+}
+.driver-progress-card .trip-timeline strong {
+  color: var(--navy);
+}
+.driver-pod-card,
+.driver-expense-card {
+  margin-block: 0;
+}
+.driver-pod-card .delivery-form,
+.driver-expense-card form {
+  max-width: none;
+}
+.driver-pod-card .delivery-form {
+  gap: var(--space-3);
+}
+.driver-pod-card .signature-field {
+  border-radius: 14px;
+  background: var(--cloud);
+}
+.driver-pod-card .button.primary,
+.driver-expense-card .button.primary {
+  width: 100%;
+  min-height: 50px;
+}
+.driver-pod-card .delivery-attempt {
+  padding-block: var(--space-4);
+}
+.driver-expense-card > .small.muted:first-of-type {
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--cloud);
+}
+.driver-expense-card .form-grid {
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-3);
+}
+.driver-expense-card form > h3 {
+  font-size: var(--text-base);
+  margin-bottom: var(--space-2);
+}
+.driver-issue-card {
+  margin: 0;
+}
+.profile .page-heading {
+  margin-bottom: var(--space-5);
+}
+.driver-profile-hero {
+  padding: var(--space-5) 0 var(--space-4);
+  text-align: center;
+}
+.driver-profile-hero .profile-avatar {
+  width: 88px;
+  height: 88px;
+  margin-bottom: var(--space-3);
+  background: color-mix(in srgb, var(--blue) 10%, var(--white));
+  border: 4px solid var(--white);
+  box-shadow: 0 6px 18px rgba(8, 17, 31, 0.1);
+}
+.driver-profile-hero h2 {
+  font-size: 20px;
+  margin-bottom: var(--space-2);
+}
+.profile > .card {
+  border-radius: 16px;
+  box-shadow: none;
+}
+.bottom-nav {
+  box-shadow: 0 -5px 20px rgba(8, 17, 31, 0.05);
+}
+.bottom-nav a,
+.bottom-nav button {
+  border-radius: 10px;
+}
+.bottom-nav .active {
+  color: var(--blue);
+  background: color-mix(in srgb, var(--blue) 8%, var(--white));
+}
+@media (max-width: 430px) {
+  .driver-trip-detail,
+  .driver-trips-screen,
+  .profile {
+    padding-inline: var(--space-4);
+  }
+  .driver-expense-card .form-grid {
+    grid-template-columns: 1fr;
+  }
+  .driver-trip-info-card .master-fields > div {
+    grid-template-columns: 92px minmax(0, 1fr);
+  }
+}

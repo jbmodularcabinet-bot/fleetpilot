@@ -792,7 +792,7 @@ export function TripDetail({
   if (!trip) return <LoadingState />;
   const closed = ["COMPLETED", "CANCELLED"].includes(trip.current_status);
   return (
-    <div className={own ? "driver-content" : "trip-command-workspace"}>
+    <div className={own ? "driver-content driver-trip-detail" : "trip-command-workspace"}>
       <Link className="master-back" href={own ? "/driver/trips" : "/dispatch"}>
         <ArrowLeft size={16} />
         Back to {own ? "your trips" : "dispatch"}
@@ -882,7 +882,9 @@ export function TripDetail({
         !closed &&
         can(identity, "driver_defect.create_own") &&
         trip.vehicle_id && (
-          <DriverDefect vehicle={trip.vehicle_id} trip={trip.id} />
+          <div className="driver-issue-card">
+            <DriverDefect vehicle={trip.vehicle_id} trip={trip.id} />
+          </div>
         )}
       {closed && (
         <p className="trip-notice">
@@ -906,10 +908,17 @@ export function TripDetail({
       )}
       <section
         id={own ? undefined : "trip-overview"}
-        className={own ? undefined : "trip-section"}
+        className={own ? "driver-trip-overview" : "trip-section"}
       >
-        <div className="trip-detail-grid">
-        <Card className="master-card" title="Trip details">
+        <div
+          className={
+            own ? "trip-detail-grid driver-trip-detail-grid" : "trip-detail-grid"
+          }
+        >
+        <Card
+          className={own ? "master-card driver-trip-info-card" : "master-card"}
+          title="Trip details"
+        >
           <dl className="master-fields">
             <div>
               <dt>Customer</dt>
@@ -983,7 +992,12 @@ export function TripDetail({
           </dl>
         </Card>
         <div className="trip-side">
-          <Card title="Next action" className="master-card">
+          <Card
+            title="Next action"
+            className={
+              own ? "master-card driver-next-action-card" : "master-card"
+            }
+          >
             {trip.next_action &&
             can(
               identity,
@@ -1139,9 +1153,16 @@ export function TripDetail({
       </section>
       <section
         id={own ? undefined : "trip-tracking"}
-        className={own ? undefined : "trip-section"}
+        className={own ? "driver-trip-progress" : "trip-section"}
       >
-        <Card title="Milestone timeline" className="master-card audit-history">
+        <Card
+          title="Milestone timeline"
+          className={
+            own
+              ? "master-card audit-history driver-progress-card"
+              : "master-card audit-history"
+          }
+        >
         {timelineError ? (
           <ErrorState message={timelineError} />
         ) : !timeline ? (
@@ -1171,7 +1192,7 @@ export function TripDetail({
       {can(identity, own ? "driver_expense.read_own" : "expenses.read") && (
         <section
           id={own ? undefined : "trip-expenses"}
-          className={own ? undefined : "trip-section"}
+          className={own ? "driver-trip-expenses" : "trip-section"}
         >
           <ExpensesPanel
             trip={trip}
@@ -1370,7 +1391,11 @@ export function DriverTrips({ compact = false }: { compact?: boolean }) {
     revision,
   );
   return (
-    <div className={compact ? "" : "driver-content"}>
+    <div
+      className={
+        compact ? "driver-home-trip-list" : "driver-content driver-trips-screen"
+      }
+    >
       {!compact && (
         <PageHeader
           title="Your trips"
@@ -1427,7 +1452,7 @@ export function DriverTrips({ compact = false }: { compact?: boolean }) {
       ) : (
         <div className="driver-trip-list">
           {data.items.map((trip) => (
-            <Card className="current-trip" key={trip.id}>
+            <Card className="current-trip driver-trip-card" key={trip.id}>
               <div className="trip-card-title">
                 <strong>{trip.trip_number}</strong>
                 <TripBadge value={trip.current_status} />
