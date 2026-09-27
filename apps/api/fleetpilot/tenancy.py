@@ -63,7 +63,7 @@ async def resolve_tenant(db: AsyncSession, user: User, selection: str | None) ->
 
 
 async def tenant(
-    request: Request, user: User = Depends(current_user), db: AsyncSession = Depends(get_db)
+    request: Request, user: User = Depends(current_user), db: AsyncSession = Depends(get_db, scope="function")
 ) -> TenantContext:
     return await resolve_tenant(db, user, request.cookies.get("fp_organization"))
 

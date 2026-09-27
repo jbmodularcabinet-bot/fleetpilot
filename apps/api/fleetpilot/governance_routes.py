@@ -547,10 +547,14 @@ async def accept_legacy_expense(
     )
     if item["status"] != "SUBMITTED" or not details or details[0]["category"] == "DRIVER_CASH_ADVANCE" or details[0]["voided"]:
         raise HTTPException(409, "Legacy expense is not eligible for acceptance.")
+    if details[0]["category"] == "FUEL":
+        require_current(ctx, "fuel.review")
     document = {"command": "legacy_expense_review", "expense": str(identifier), "payload": payload.model_dump(mode="json")}
     digest, replay = await receipt(db, ctx, idempotency_key, document)
     if replay:
         return replay
+    if await db.scalar(text("SELECT 1 FROM legacy_expense_review_events WHERE organization_id=:org AND expense_id=:id"), dict(org=ctx.organization.id, id=identifier)):
+        raise HTTPException(409, "Legacy expense is already accepted.")
     event_id = uuid.uuid4()
     await db.execute(text("""INSERT INTO legacy_expense_review_events(id,organization_id,trip_id,expense_id,action,created_by)
         VALUES(:id,:org,:trip,:expense,'ACCEPTED',:actor)"""), dict(id=event_id, org=ctx.organization.id, trip=trip.id, expense=identifier, actor=ctx.user.id))

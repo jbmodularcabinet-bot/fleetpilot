@@ -192,7 +192,7 @@ async def check_ready():
     settings.validate_runtime()
     async with Session() as session:
         revision = await session.scalar(text("SELECT version_num FROM alembic_version"))
-        if revision != "0012_legacy_financial_review":
+        if revision != "0013_legacy_review_guards":
             raise RuntimeError("Database schema is incompatible")
         if settings.rate_limit_backend == "postgres":
             await session.execute(text("SELECT 1 FROM request_rate_windows LIMIT 1"))

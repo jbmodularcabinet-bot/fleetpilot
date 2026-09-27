@@ -255,7 +255,7 @@ async def assign(db, ctx, row, vehicle_id, driver_id):
 
 @router.post("/trips", status_code=201)
 async def create_trip(
-    payload: TripCreate, ctx: TenantContext = Depends(tenant), db: AsyncSession = Depends(get_db)
+    payload: TripCreate, ctx: TenantContext = Depends(tenant), db: AsyncSession = Depends(get_db, scope="function")
 ):
     await write_lock(db, ctx, "trips.create")
     if payload.vehicle_id:
@@ -302,7 +302,7 @@ async def create_trip(
 @router.get("/trips")
 async def list_trips(
     ctx: TenantContext = Depends(tenant),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
     view: Literal["all", "today", "upcoming", "active", "closed", "cancelled"] = "all",
     search: str = Query("", max_length=160),
     status: Literal[
@@ -413,7 +413,7 @@ async def list_trips(
 
 @router.get("/trips/{identifier}")
 async def read_trip(
-    identifier: uuid.UUID, ctx: TenantContext = Depends(tenant), db: AsyncSession = Depends(get_db)
+    identifier: uuid.UUID, ctx: TenantContext = Depends(tenant), db: AsyncSession = Depends(get_db, scope="function")
 ):
     ctx.require("trips.read")
     return await trip_view(db, ctx, await find(db, ctx, Trip, identifier))
@@ -424,7 +424,7 @@ async def update_trip(
     identifier: uuid.UUID,
     payload: TripUpdate,
     ctx: TenantContext = Depends(tenant),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     await write_lock(db, ctx, "trips.update")
     row = await find(db, ctx, Trip, identifier)
@@ -459,7 +459,7 @@ async def update_notes(
     identifier: uuid.UUID,
     payload: TripNotes,
     ctx: TenantContext = Depends(tenant),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     await write_lock(db, ctx, "trips.update")
     row = await find(db, ctx, Trip, identifier)
@@ -484,7 +484,7 @@ async def assign_trip(
     identifier: uuid.UUID,
     payload: TripAssign,
     ctx: TenantContext = Depends(tenant),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     await write_lock(db, ctx, "trips.assign")
     require_current(ctx, "dispatch.manage")
@@ -560,7 +560,7 @@ async def owner_transition(
     identifier: uuid.UUID,
     payload: TripTransition,
     ctx: TenantContext = Depends(tenant),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     return await transition(identifier, payload, ctx, db)
 
@@ -570,7 +570,7 @@ async def cancel_trip(
     identifier: uuid.UUID,
     payload: TripCancel,
     ctx: TenantContext = Depends(tenant),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     await write_lock(db, ctx, "trips.cancel")
     row = await find(db, ctx, Trip, identifier)
@@ -608,7 +608,7 @@ async def complete_trip(
     identifier: uuid.UUID,
     payload: TripComplete,
     ctx: TenantContext = Depends(tenant),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     await write_lock(db, ctx, "trips.complete")
     row = await find(db, ctx, Trip, identifier)
@@ -670,7 +670,7 @@ async def milestones(db, ctx, row, own=False):
 
 @router.get("/trips/{identifier}/milestones")
 async def read_milestones(
-    identifier: uuid.UUID, ctx: TenantContext = Depends(tenant), db: AsyncSession = Depends(get_db)
+    identifier: uuid.UUID, ctx: TenantContext = Depends(tenant), db: AsyncSession = Depends(get_db, scope="function")
 ):
     ctx.require("trips.read")
     return await milestones(db, ctx, await find(db, ctx, Trip, identifier))
@@ -678,7 +678,7 @@ async def read_milestones(
 
 @router.get("/trips/{identifier}/assignments")
 async def read_trip_assignments(
-    identifier: uuid.UUID, ctx: TenantContext = Depends(tenant), db: AsyncSession = Depends(get_db)
+    identifier: uuid.UUID, ctx: TenantContext = Depends(tenant), db: AsyncSession = Depends(get_db, scope="function")
 ):
     ctx.require("trips.read")
     await find(db, ctx, Trip, identifier)
@@ -697,7 +697,7 @@ async def read_trip_assignments(
 @router.get("/driver/trips")
 async def driver_trips(
     ctx: TenantContext = Depends(tenant),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
     history: bool = False,
     limit: int = Query(20, ge=1, le=100),
     offset: int = Query(0, ge=0),
@@ -726,14 +726,14 @@ async def driver_trips(
 
 @router.get("/driver/trips/{identifier}")
 async def driver_trip(
-    identifier: uuid.UUID, ctx: TenantContext = Depends(tenant), db: AsyncSession = Depends(get_db)
+    identifier: uuid.UUID, ctx: TenantContext = Depends(tenant), db: AsyncSession = Depends(get_db, scope="function")
 ):
     return await trip_view(db, ctx, await own_trip(db, ctx, identifier), True)
 
 
 @router.get("/driver/trips/{identifier}/milestones")
 async def driver_milestones(
-    identifier: uuid.UUID, ctx: TenantContext = Depends(tenant), db: AsyncSession = Depends(get_db)
+    identifier: uuid.UUID, ctx: TenantContext = Depends(tenant), db: AsyncSession = Depends(get_db, scope="function")
 ):
     return await milestones(db, ctx, await own_trip(db, ctx, identifier), True)
 
@@ -743,6 +743,6 @@ async def driver_transition(
     identifier: uuid.UUID,
     payload: TripTransition,
     ctx: TenantContext = Depends(tenant),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
 ):
     return await transition(identifier, payload, ctx, db, True)

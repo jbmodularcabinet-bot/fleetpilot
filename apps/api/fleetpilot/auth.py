@@ -33,8 +33,8 @@ class HashedTokenDatabase(SQLAlchemyAccessTokenDatabase[AccessToken]):
         return record
 
 
-async def get_user_db(db: AsyncSession = Depends(get_db)):
-    yield SQLAlchemyUserDatabase(db, User)
+async def get_user_db(db: AsyncSession = Depends(get_db, scope="function")):
+    return SQLAlchemyUserDatabase(db, User)
 
 
 class UserManager(UUIDIDMixin, BaseUserManager[User, uuid.UUID]):
@@ -42,11 +42,11 @@ class UserManager(UUIDIDMixin, BaseUserManager[User, uuid.UUID]):
 
 
 async def get_user_manager(user_db=Depends(get_user_db)):
-    yield UserManager(user_db)
+    return UserManager(user_db)
 
 
-async def get_strategy(db: AsyncSession = Depends(get_db)):
-    yield DatabaseStrategy(
+async def get_strategy(db: AsyncSession = Depends(get_db, scope="function")):
+    return DatabaseStrategy(
         HashedTokenDatabase(db, AccessToken), lifetime_seconds=settings.session_lifetime_seconds
     )
 
