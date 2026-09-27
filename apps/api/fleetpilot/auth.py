@@ -1,7 +1,7 @@
 import hashlib
 import uuid
 
-from fastapi import Depends
+from fastapi import Depends, HTTPException, Request
 from fastapi_users import BaseUserManager, FastAPIUsers, UUIDIDMixin
 from fastapi_users.authentication import AuthenticationBackend, CookieTransport
 from fastapi_users.authentication.strategy.db import DatabaseStrategy
@@ -76,4 +76,18 @@ transport = FleetPilotCookieTransport(
 )
 backend = AuthenticationBackend(name="session", transport=transport, get_strategy=get_strategy)
 auth = FastAPIUsers[User, uuid.UUID](get_user_manager, [backend])
-current_user = auth.current_user(active=True)
+optional_cookie_user = auth.current_user(active=True, optional=True)
+
+
+async def current_user(
+    request: Request,
+    cookie_user: User | None = Depends(optional_cookie_user),
+    db: AsyncSession = Depends(get_db, scope="function"),
+):
+    if request.headers.get("authorization"):
+        from .sites_bridge import principal
+
+        return await principal(request, db)
+    if cookie_user is None:
+        raise HTTPException(401, "Unauthorized")
+    return cookie_user

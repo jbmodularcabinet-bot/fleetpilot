@@ -28,6 +28,10 @@ class Settings(BaseSettings):
     mutation_limit: int = 120
     upload_limit: int = 30
     evidence_access_limit: int = 120
+    sites_bridge_secret: str | None = None
+    sites_bridge_issuer: str | None = None
+    sites_bridge_audience: str | None = None
+    sites_bridge_organization_id: str | None = None
 
     @field_validator("database_url")
     @classmethod
