@@ -76,6 +76,39 @@ class GenerationQueueService:
             conn.rollback()
             raise
 
+    def claim_job(self, generation_job_id: str, worker_id: str,
+                  lease_seconds: int = 60, now: datetime | None = None) -> dict[str, Any] | None:
+        moment = now or _now()
+        stamp = _iso(moment)
+        token = secrets.token_urlsafe(24)
+        lease = _iso(moment + timedelta(seconds=lease_seconds))
+        conn = self.store.conn
+        conn.execute("BEGIN IMMEDIATE")
+        try:
+            row = conn.execute("""
+                SELECT * FROM generation_queue
+                WHERE generation_job_id=? AND state='QUEUED' AND available_at<=?
+                  AND cancel_requested_at IS NULL AND attempt_count < max_attempts
+                LIMIT 1
+            """, (generation_job_id, stamp)).fetchone()
+            if row is None:
+                conn.commit()
+                return None
+            updated = conn.execute("""
+                UPDATE generation_queue
+                SET state='CLAIMED', claimed_by=?, claim_token=?, claimed_at=?,
+                    lease_expires_at=?, updated_at=?
+                WHERE id=? AND state='QUEUED'
+            """, (worker_id, token, stamp, lease, stamp, row["id"]))
+            if updated.rowcount != 1:
+                conn.rollback()
+                return None
+            conn.commit()
+            return self.store.get("generation_queue", row["id"])
+        except Exception:
+            conn.rollback()
+            raise
+
     def start(self, queue_id: str, claim_token: str) -> dict[str, Any]:
         stamp = now_iso()
         row = self.store.get("generation_queue", queue_id)

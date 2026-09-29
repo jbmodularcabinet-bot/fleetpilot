@@ -34,7 +34,7 @@ class Batch9MediaTests(unittest.TestCase):
         shutil.copy2(source_hero, self.visual)
         self.db = self.root / "creativeos.sqlite3"
         self.store = CreativeOSStore(self.db)
-        self.assertEqual(self.store.migrate_to_latest(), 9)
+        self.assertEqual(self.store.migrate_to_latest(), 10)
         brand = BrandBrainService(self.store).load_fleetpilot_fixture()
         self.campaign = self.store.create("campaigns", {"brand_profile_id": brand["id"], "title": "Media"})
         self.board = self.store.create("storyboards", {"campaign_id": self.campaign["id"], "title": "Media"})
@@ -219,7 +219,7 @@ class Batch9MediaTests(unittest.TestCase):
         self.assertEqual(self.store.get("cost_recommendations", ids["rec"])["id"], ids["rec"])
         self.assertEqual(self.store.get("cost_estimates", ids["estimate"])["id"], ids["estimate"])
         self.assertEqual(self.store.get("cost_overrides", ids["override"])["id"], ids["override"])
-        self.assertEqual(self.store.migrate_to_latest(), 9)
+        self.assertEqual(self.store.migrate_to_latest(), 10)
 
 
 if __name__ == "__main__":

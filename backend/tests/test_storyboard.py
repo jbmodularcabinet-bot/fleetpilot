@@ -18,7 +18,7 @@ class StoryboardUnitTests(unittest.TestCase):
 class StoryboardIntegrationTests(unittest.TestCase):
     def setUp(self):
         self.tmp=tempfile.TemporaryDirectory(); self.db=Path(self.tmp.name)/"db.sqlite3"
-        self.store=CreativeOSStore(self.db); self.assertEqual(self.store.migrate_to_latest(),9)
+        self.store=CreativeOSStore(self.db); self.assertEqual(self.store.migrate_to_latest(),10)
         self.brand=BrandBrainService(self.store).load_fleetpilot_fixture()
         self.campaign=self.store.create("campaigns",{"brand_profile_id":self.brand["id"],"title":"Launch"})
         brief=CampaignBrief(self.brand["id"],"Create explainer",self.brand["audience"],"aware",["fragmented workflow"],"fleet control","See demo","60s Explainer",60,"16:9","English","confident","none",85,15,"balanced","balanced",["preserve UI"])
@@ -53,7 +53,7 @@ class StoryboardIntegrationTests(unittest.TestCase):
         v=self.service.create_version(scene["id"],"EDIT",prompt="version A")
         sid=scene["id"]; vid=v["id"]; self.store.close()
         self.store=CreativeOSStore(self.db); self.service=StoryboardService(self.store)
-        self.assertEqual(self.store.schema_version(),9)
+        self.assertEqual(self.store.schema_version(),10)
         self.assertEqual(self.store.get("scenes",sid)["locked"],1)
         self.assertEqual(self.store.get("scene_versions",vid)["version_number"],1)
         self.assertEqual(self.store.get("scenes",sid)["selected_version_id"],vid)
@@ -62,6 +62,6 @@ class StoryboardIntegrationTests(unittest.TestCase):
         self.assertEqual(self.store.rollback_to(3),3)
         self.assertEqual(self.store.get("brand_profiles",self.brand["id"])["name"],"FleetPilot")
         self.assertEqual(len(self.store.list("director_plans")),1)
-        self.assertEqual(self.store.migrate_to_latest(),9)
+        self.assertEqual(self.store.migrate_to_latest(),10)
 
 if __name__=="__main__": unittest.main()

@@ -521,3 +521,206 @@ DELETE FROM schema_migrations WHERE version=9;
 """
 
 MIGRATIONS[9] = (MIGRATION_9_UP, MIGRATION_9_DOWN)
+
+
+MIGRATION_10_UP = """
+CREATE TABLE generation_requests(
+ id TEXT PRIMARY KEY,
+ generation_job_id TEXT UNIQUE,
+ asset_requirement_id TEXT NOT NULL,
+ tenant_id TEXT NOT NULL,
+ user_id TEXT NOT NULL,
+ campaign_id TEXT NOT NULL,
+ brand_profile_id TEXT NOT NULL,
+ parent_asset_id TEXT,
+ intent TEXT NOT NULL,
+ capability TEXT NOT NULL,
+ lifecycle_step INTEGER NOT NULL DEFAULT 0 CHECK(lifecycle_step BETWEEN 0 AND 10),
+ lifecycle_state TEXT NOT NULL DEFAULT 'DRAFT'
+   CHECK(lifecycle_state IN ('DRAFT','PLANNED','COSTED','APPROVED','QUEUED','GENERATING','GENERATED','QA','HUMAN_REVIEW','READY_FOR_EXPORT')),
+ idempotency_key TEXT NOT NULL,
+ original_prompt TEXT NOT NULL,
+ compiled_prompt TEXT NOT NULL,
+ brand_snapshot_json TEXT NOT NULL,
+ plan_json TEXT NOT NULL DEFAULT '{}',
+ route_json TEXT NOT NULL DEFAULT '{}',
+ business_claims_json TEXT NOT NULL DEFAULT '[]',
+ estimated_cost_minor INTEGER,
+ actual_cost_minor INTEGER,
+ currency TEXT,
+ currency_minor_exponent INTEGER,
+ approval_required INTEGER NOT NULL DEFAULT 0 CHECK(approval_required IN (0,1)),
+ created_at TEXT NOT NULL,
+ updated_at TEXT NOT NULL,
+ FOREIGN KEY(generation_job_id) REFERENCES generation_jobs(id) ON DELETE RESTRICT,
+ FOREIGN KEY(asset_requirement_id) REFERENCES asset_requirements(id) ON DELETE RESTRICT,
+ FOREIGN KEY(campaign_id) REFERENCES campaigns(id) ON DELETE RESTRICT,
+ FOREIGN KEY(brand_profile_id) REFERENCES brand_profiles(id) ON DELETE RESTRICT,
+ UNIQUE(tenant_id, idempotency_key)
+);
+CREATE INDEX ix_generation_requests_campaign ON generation_requests(tenant_id,campaign_id,created_at);
+
+CREATE TABLE generation_lifecycle_events(
+ id TEXT PRIMARY KEY,
+ request_id TEXT NOT NULL,
+ lifecycle_step INTEGER NOT NULL CHECK(lifecycle_step BETWEEN 0 AND 10),
+ lifecycle_state TEXT NOT NULL,
+ actor TEXT NOT NULL,
+ evidence_json TEXT NOT NULL DEFAULT '{}',
+ created_at TEXT NOT NULL,
+ FOREIGN KEY(request_id) REFERENCES generation_requests(id) ON DELETE RESTRICT,
+ UNIQUE(request_id,lifecycle_step)
+);
+
+CREATE TABLE generation_attempts(
+ id TEXT PRIMARY KEY,
+ request_id TEXT NOT NULL,
+ attempt_number INTEGER NOT NULL CHECK(attempt_number > 0),
+ provider TEXT NOT NULL,
+ model TEXT NOT NULL,
+ state TEXT NOT NULL CHECK(state IN (
+   'SUBMITTING','SUBMITTED','POLLING','SUCCEEDED','FAILED',
+   'SUBMIT_UNCERTAIN','CANCELLED','REJECTED')),
+ provider_request_id TEXT UNIQUE,
+ provider_status_url TEXT,
+ provider_cancel_url TEXT,
+ correlation_id TEXT NOT NULL,
+ compiled_prompt TEXT NOT NULL,
+ settings_json TEXT NOT NULL DEFAULT '{}',
+ references_json TEXT NOT NULL DEFAULT '[]',
+ estimated_cost_minor INTEGER NOT NULL,
+ actual_cost_minor INTEGER,
+ actual_cost_source TEXT,
+ currency TEXT NOT NULL,
+ currency_minor_exponent INTEGER NOT NULL,
+ retryable INTEGER NOT NULL DEFAULT 0 CHECK(retryable IN (0,1)),
+ error_code TEXT,
+ error_message TEXT,
+ submitted_at TEXT,
+ completed_at TEXT,
+ created_at TEXT NOT NULL,
+ updated_at TEXT NOT NULL,
+ FOREIGN KEY(request_id) REFERENCES generation_requests(id) ON DELETE RESTRICT,
+ UNIQUE(request_id,attempt_number)
+);
+CREATE INDEX ix_generation_attempts_request ON generation_attempts(request_id,attempt_number);
+
+CREATE TABLE generation_results(
+ id TEXT PRIMARY KEY,
+ request_id TEXT NOT NULL UNIQUE,
+ attempt_id TEXT NOT NULL UNIQUE,
+ provider_request_id TEXT NOT NULL,
+ output_url TEXT NOT NULL,
+ local_path TEXT NOT NULL,
+ output_type TEXT NOT NULL,
+ output_metadata_json TEXT NOT NULL DEFAULT '{}',
+ checksum_sha256 TEXT NOT NULL,
+ estimated_cost_minor INTEGER NOT NULL,
+ actual_cost_minor INTEGER NOT NULL,
+ actual_cost_source TEXT NOT NULL,
+ currency TEXT NOT NULL,
+ currency_minor_exponent INTEGER NOT NULL,
+ created_at TEXT NOT NULL,
+ FOREIGN KEY(request_id) REFERENCES generation_requests(id) ON DELETE RESTRICT,
+ FOREIGN KEY(attempt_id) REFERENCES generation_attempts(id) ON DELETE RESTRICT
+);
+
+CREATE TABLE generation_provenance(
+ id TEXT PRIMARY KEY,
+ result_id TEXT NOT NULL UNIQUE,
+ request_id TEXT NOT NULL UNIQUE,
+ tenant_id TEXT NOT NULL,
+ user_id TEXT NOT NULL,
+ campaign_id TEXT NOT NULL,
+ brand_profile_id TEXT NOT NULL,
+ parent_asset_id TEXT,
+ original_prompt TEXT NOT NULL,
+ compiled_provider_prompt TEXT NOT NULL,
+ provider TEXT NOT NULL,
+ model TEXT NOT NULL,
+ settings_json TEXT NOT NULL,
+ references_json TEXT NOT NULL,
+ estimated_cost_minor INTEGER NOT NULL,
+ actual_cost_minor INTEGER NOT NULL,
+ actual_cost_source TEXT NOT NULL,
+ currency TEXT NOT NULL,
+ currency_minor_exponent INTEGER NOT NULL,
+ provider_request_id TEXT NOT NULL,
+ created_at TEXT NOT NULL,
+ FOREIGN KEY(result_id) REFERENCES generation_results(id) ON DELETE RESTRICT,
+ FOREIGN KEY(request_id) REFERENCES generation_requests(id) ON DELETE RESTRICT
+);
+
+CREATE TABLE generation_budget_policies(
+ id TEXT PRIMARY KEY,
+ tenant_id TEXT NOT NULL,
+ campaign_id TEXT NOT NULL,
+ campaign_limit_minor INTEGER NOT NULL CHECK(campaign_limit_minor >= 0),
+ tenant_daily_limit_minor INTEGER NOT NULL CHECK(tenant_daily_limit_minor >= 0),
+ approval_required_minor INTEGER NOT NULL CHECK(approval_required_minor >= 0),
+ currency TEXT NOT NULL,
+ currency_minor_exponent INTEGER NOT NULL,
+ max_attempts INTEGER NOT NULL CHECK(max_attempts BETWEEN 1 AND 10),
+ hard_cap INTEGER NOT NULL DEFAULT 1 CHECK(hard_cap IN (0,1)),
+ created_at TEXT NOT NULL,
+ updated_at TEXT NOT NULL,
+ FOREIGN KEY(campaign_id) REFERENCES campaigns(id) ON DELETE RESTRICT,
+ UNIQUE(tenant_id,campaign_id)
+);
+
+CREATE TABLE generation_spend_ledger(
+ id TEXT PRIMARY KEY,
+ request_id TEXT NOT NULL,
+ tenant_id TEXT NOT NULL,
+ campaign_id TEXT NOT NULL,
+ event_type TEXT NOT NULL CHECK(event_type IN ('RESERVED','CHARGED','RELEASED')),
+ amount_minor INTEGER NOT NULL CHECK(amount_minor >= 0),
+ currency TEXT NOT NULL,
+ spend_date TEXT NOT NULL,
+ created_at TEXT NOT NULL,
+ FOREIGN KEY(request_id) REFERENCES generation_requests(id) ON DELETE RESTRICT,
+ UNIQUE(request_id,event_type)
+);
+CREATE INDEX ix_generation_spend_daily ON generation_spend_ledger(tenant_id,spend_date,event_type);
+
+CREATE TABLE generation_approvals(
+ id TEXT PRIMARY KEY,
+ request_id TEXT NOT NULL,
+ approval_type TEXT NOT NULL CHECK(approval_type IN ('BUDGET','PREMIUM','HUMAN_REVIEW')),
+ decision TEXT NOT NULL CHECK(decision IN ('APPROVED','REJECTED')),
+ approved_by TEXT NOT NULL,
+ note TEXT NOT NULL DEFAULT '',
+ created_at TEXT NOT NULL,
+ FOREIGN KEY(request_id) REFERENCES generation_requests(id) ON DELETE RESTRICT,
+ UNIQUE(request_id,approval_type)
+);
+
+CREATE TABLE generation_gate_runs(
+ id TEXT PRIMARY KEY,
+ request_id TEXT NOT NULL UNIQUE,
+ result TEXT NOT NULL CHECK(result IN ('PASS','FAIL')),
+ checks_json TEXT NOT NULL,
+ created_at TEXT NOT NULL,
+ FOREIGN KEY(request_id) REFERENCES generation_requests(id) ON DELETE RESTRICT
+);
+
+INSERT INTO schema_migrations(version) VALUES(10);
+"""
+
+MIGRATION_10_DOWN = """
+DROP TABLE IF EXISTS generation_gate_runs;
+DROP TABLE IF EXISTS generation_approvals;
+DROP INDEX IF EXISTS ix_generation_spend_daily;
+DROP TABLE IF EXISTS generation_spend_ledger;
+DROP TABLE IF EXISTS generation_budget_policies;
+DROP TABLE IF EXISTS generation_provenance;
+DROP TABLE IF EXISTS generation_results;
+DROP INDEX IF EXISTS ix_generation_attempts_request;
+DROP TABLE IF EXISTS generation_attempts;
+DROP TABLE IF EXISTS generation_lifecycle_events;
+DROP INDEX IF EXISTS ix_generation_requests_campaign;
+DROP TABLE IF EXISTS generation_requests;
+DELETE FROM schema_migrations WHERE version=10;
+"""
+
+MIGRATIONS[10] = (MIGRATION_10_UP, MIGRATION_10_DOWN)

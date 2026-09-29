@@ -17,6 +17,9 @@ TABLES = {
     "provider_cost_profiles", "fx_snapshots", "cost_recommendations", "cost_estimates", "cost_overrides",
     "voice_jobs", "composition_timelines", "composition_timeline_entries", "render_jobs", "render_attempts",
     "qa_runs", "qa_check_results", "qa_reviews",
+    "generation_requests", "generation_lifecycle_events", "generation_attempts",
+    "generation_results", "generation_provenance", "generation_budget_policies",
+    "generation_spend_ledger", "generation_approvals", "generation_gate_runs",
 }
 JSON_FIELDS = {
     "brand_profiles": {"palette_json", "fonts_json", "messaging_json", "cta_rules_json", "prohibited_visuals_json", "approved_refs_json", "immutable_rules_json", "pain_points_json", "proof_points_json", "prohibited_messaging_json", "preferred_terms_json", "prohibited_terms_json", "campaign_languages_json", "approved_ui_folders_json", "protected_screens_json", "allowed_ui_transforms_json", "prohibited_generative_transforms_json", "visual_rules_json"},
@@ -28,6 +31,12 @@ JSON_FIELDS = {
     "render_jobs": {"command_args_json", "probe_json"},
     "qa_runs": {"required_checks_json"},
     "qa_check_results": {"expected_json", "observed_json", "evidence_json"},
+    "generation_requests": {"brand_snapshot_json", "plan_json", "route_json", "business_claims_json"},
+    "generation_lifecycle_events": {"evidence_json"},
+    "generation_attempts": {"settings_json", "references_json"},
+    "generation_results": {"output_metadata_json"},
+    "generation_provenance": {"settings_json", "references_json"},
+    "generation_gate_runs": {"checks_json"},
     "export_jobs": {"settings_json"},
     "director_plans": {"brief_json", "output_json"},
     "scenes": {"asset_requirements_json"},
@@ -132,7 +141,7 @@ class CreativeOSStore:
         rows = self.conn.execute(sql, list(where.values())).fetchall()
         return [dict(row) for row in rows]
     def update(self, table: str, row_id: str, values: dict[str, Any]) -> dict[str, Any]:
-        if table in {"generated_assets", "provider_cost_profiles", "fx_snapshots", "cost_recommendations", "cost_estimates", "cost_overrides", "qa_runs", "qa_check_results", "qa_reviews"}:
+        if table in {"generated_assets", "provider_cost_profiles", "fx_snapshots", "cost_recommendations", "cost_estimates", "cost_overrides", "qa_runs", "qa_check_results", "qa_reviews", "generation_lifecycle_events", "generation_results", "generation_provenance", "generation_spend_ledger", "generation_approvals", "generation_gate_runs"}:
             raise ValueError(f"{table} records are immutable")
         columns = self._columns(table)
         if table == "brand_profiles":
@@ -161,7 +170,7 @@ class CreativeOSStore:
         return self.get(table, row_id)
 
     def delete(self, table: str, row_id: str) -> None:
-        if table in {"generated_assets", "provider_cost_profiles", "fx_snapshots", "cost_recommendations", "cost_estimates", "cost_overrides", "qa_runs", "qa_check_results", "qa_reviews"}:
+        if table in {"generated_assets", "provider_cost_profiles", "fx_snapshots", "cost_recommendations", "cost_estimates", "cost_overrides", "qa_runs", "qa_check_results", "qa_reviews", "generation_lifecycle_events", "generation_results", "generation_provenance", "generation_spend_ledger", "generation_approvals", "generation_gate_runs"}:
             raise ValueError(f"{table} records are immutable")
         self._columns(table)
         cur = self.conn.execute(f"DELETE FROM {table} WHERE id=?", (row_id,))
