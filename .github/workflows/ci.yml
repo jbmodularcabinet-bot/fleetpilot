@@ -1,0 +1,203 @@
+name: CreativeOS CI
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    name: backend
+    runs-on: windows-latest
+    timeout-minutes: 20
+    env:
+      HF_KEY: ""
+      HF_CREDENTIALS: ""
+      HF_API_KEY: ""
+      HF_API_SECRET: ""
+    steps:
+      - name: Checkout exact commit
+        uses: actions/checkout@v4
+
+      - name: Set up pinned Python
+        uses: actions/setup-python@v5
+        with:
+          python-version-file: .python-version
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Install pinned backend dependencies
+        shell: pwsh
+        run: |
+          python --version
+          python -m pip install --disable-pip-version-check -r backend/requirements.txt
+
+      - name: Provision FFmpeg and FFprobe 9.0.2
+        shell: pwsh
+        run: |
+          winget install --id Gyan.FFmpeg --version 9.0.2 --exact --silent --accept-package-agreements --accept-source-agreements --disable-interactivity
+          $ffmpeg = Get-ChildItem "$env:LOCALAPPDATA\Microsoft\WinGet\Packages" -Recurse -Filter ffmpeg.exe |
+            Where-Object { $_.FullName -like "*Gyan.FFmpeg*" } |
+            Select-Object -First 1
+          $ffprobe = Get-ChildItem "$env:LOCALAPPDATA\Microsoft\WinGet\Packages" -Recurse -Filter ffprobe.exe |
+            Where-Object { $_.FullName -like "*Gyan.FFmpeg*" } |
+            Select-Object -First 1
+          if (-not $ffmpeg -or -not $ffprobe) {
+            throw "FFmpeg/FFprobe 9.0.2 installation not found."
+          }
+          $ffmpegLine = (& $ffmpeg.FullName -version | Select-Object -First 1)
+          $ffprobeLine = (& $ffprobe.FullName -version | Select-Object -First 1)
+          if ($ffmpegLine -notmatch "ffmpeg version 9\.0\.2") {
+            throw "Unexpected FFmpeg version."
+          }
+          if ($ffprobeLine -notmatch "ffprobe version 9\.0\.2") {
+            throw "Unexpected FFprobe version."
+          }
+          Split-Path $ffmpeg.FullName -Parent | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          Write-Output $ffmpegLine
+          Write-Output $ffprobeLine
+
+      - name: Verify no seeded proof evidence
+        shell: pwsh
+        run: |
+          if (Test-Path "backend/generated") {
+            throw "backend/generated must not be seeded in CI."
+          }
+
+      - name: Run backend test suite
+        shell: pwsh
+        run: |
+          Push-Location backend
+          $output = & python -m unittest discover -s tests -v 2>&1
+          $exitCode = $LASTEXITCODE
+          $output | ForEach-Object { Write-Output $_ }
+          if ($exitCode -ne 0) {
+            exit $exitCode
+          }
+          if (-not ($output -match "Ran 84 tests")) {
+            throw "Backend test count is not 84."
+          }
+          if (-not ($output -match "^OK$")) {
+            throw "Backend suite did not report OK."
+          }
+          Pop-Location
+          if (Test-Path "backend/generated") {
+            throw "Backend tests must not create repository proof evidence."
+          }
+
+  frontend:
+    name: frontend
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout exact commit
+        uses: actions/checkout@v4
+
+      - name: Set up pinned Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+
+      - name: Use repository-declared npm
+        shell: pwsh
+        run: |
+          npm install --global npm@11.19.0
+          $declared = (Get-Content app/package.json -Raw | ConvertFrom-Json).engines.npm
+          $actual = (npm --version).Trim()
+          if ($actual -ne $declared) {
+            throw "npm runtime does not match repository declaration."
+          }
+          node --version
+          npm --version
+
+      - name: Install frontend dependencies
+        working-directory: app
+        run: npm ci
+
+      - name: Run frontend tests
+        working-directory: app
+        run: npm test
+
+      - name: Run frontend lint
+        working-directory: app
+        run: npm run lint
+
+      - name: Build frontend production bundle
+        working-directory: app
+        run: npm run build
+
+  repository-safety:
+    name: repository-safety
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout exact commit
+        uses: actions/checkout@v4
+
+      - name: Verify repository safety
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if git ls-files --error-unmatch .env.local >/dev/null 2>&1; then
+            echo ".env.local must not be tracked."
+            exit 1
+          fi
+
+          if [[ -n "$(git ls-files 'backend/generated/**')" ]]; then
+            echo "backend/generated must not contain tracked files."
+            exit 1
+          fi
+
+          if [[ -n "$(git ls-files 'backend/generated/**/*.sqlite' 'backend/generated/**/*.sqlite3')" ]]; then
+            echo "Generated proof SQLite databases must not be tracked."
+            exit 1
+          fi
+
+          if git ls-files | grep -Eiq '(^|/)(id_rsa|id_ed25519)(\.pub)?$|\.pem$|\.p12$|\.pfx$|(^|/)[^/]*(token|credentials)[^/]*$'; then
+            echo "Obvious private-key/token credential artifact is tracked."
+            exit 1
+          fi
+
+          if git grep -I -n -E 'github_pat_[A-Za-z0-9_]{20,}|gh[pousr]_[A-Za-z0-9]{20,}|-----BEGIN (RSA |EC |OPENSSH |DSA )?PRIVATE KEY-----' -- . ':!app/package-lock.json'; then
+            echo "GitHub credential or private-key material detected."
+            exit 1
+          fi
+
+          if git grep -I -n -E 'HF_(KEY|CREDENTIALS)[[:space:]]*=[[:space:]]*[^[:space:]]{8,}' -- . ':!.github/workflows/ci.yml'; then
+            echo "Committed Higgsfield credential value detected."
+            exit 1
+          fi
+
+          remote_url="$(git remote get-url origin)"
+          if [[ "$remote_url" =~ ^https://[^/@]+@ ]] || [[ "$remote_url" =~ ^https://[^/@:]+:[^/@]+@ ]]; then
+            echo "Git remote URL contains embedded credentials."
+            exit 1
+          fi
+
+          if [[ -n "$(git status --porcelain)" ]]; then
+            echo "Repository checkout was mutated during repository-safety checks."
+            git status --short
+            exit 1
+          fi
+
+          echo "REPOSITORY_SAFETY_PASS"
+
+  release-gate:
+    name: release-gate
+    runs-on: ubuntu-latest
+    needs:
+      - backend
+      - frontend
+      - repository-safety
+    steps:
+      - name: CreativeOS CI release gate
+        run: echo "CREATIVEOS_CI_PASS"
