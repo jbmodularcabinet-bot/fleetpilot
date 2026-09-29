@@ -66,6 +66,61 @@ const workflow: Array<[Screen, string]> = [
   ['review', 'Governance'],
 ]
 
+const screenLabels: Record<Screen, string> = {
+  home: 'Command Center',
+  objective: 'Objective',
+  audience: 'Audience',
+  offer: 'Offer',
+  brand: 'Brand Brain',
+  director: 'Creative Studio',
+  script: 'Script',
+  storyboard: 'Storyboard',
+  assets: 'Assets',
+  generate: 'Generation',
+  review: 'Governance',
+}
+
+const stateLabels: Record<string, string> = {
+  NOT_GENERATED: 'Not generated yet',
+  WAITING_FOR_QA: 'Waiting for QA',
+  NOT_AVAILABLE: 'Not available yet',
+  MANUAL_ONLY: 'Manual publishing only',
+  DISABLED: 'Disabled',
+  COST_APPROVAL_REQUIRED: 'Awaiting cost approval',
+  COSTED: 'Costed',
+  GENERATED: 'Generated',
+  AVAILABLE: 'Available',
+  READY_FOR_EXPORT: 'Ready for export',
+  DRAFT: 'Draft',
+  APPROVED: 'Approved',
+  READY: 'Ready',
+  EXISTING: 'Existing',
+  REQUIRED: 'Required',
+  PENDING: 'Pending',
+  REAL_UI: 'Real UI',
+  AI_VIDEO: 'AI video',
+  AI_IMAGE: 'AI image',
+  COMPOSITING_ONLY: 'Compositing only',
+  TYPOGRAPHY: 'Typography',
+}
+
+function humanizeState(value: string | null | undefined): string {
+  if (!value) return 'Not available yet'
+  if (stateLabels[value]) return stateLabels[value]
+  const normalized = value.replaceAll('_', ' ').toLowerCase()
+  return normalized.charAt(0).toUpperCase() + normalized.slice(1)
+}
+
+function sidebarSection(screen: Screen): Screen {
+  if (screen === 'objective' || screen === 'audience' || screen === 'offer') {
+    return 'objective'
+  }
+  if (screen === 'director' || screen === 'script' || screen === 'storyboard') {
+    return 'director'
+  }
+  return screen
+}
+
 function screenFromUrl(): Screen {
   const raw = new URLSearchParams(window.location.search).get('screen')
   return workflow.some(([id]) => id === raw) || raw === 'home'
@@ -193,7 +248,7 @@ function App() {
         onNavigate={next => navigate(next)}
       />
       <main className="workspace">
-        <Topbar campaign={campaign} busy={busy} />
+        <Topbar campaign={campaign} busy={busy} screen={screen} />
         {campaign && screen !== 'home' && (
           <Progress activeIndex={currentIndex} />
         )}
@@ -340,15 +395,15 @@ function Sidebar({
   onNavigate: (screen: Screen) => void
 }) {
   const items: Array<[Screen, string, string]> = [
-    ['home', 'Home', 'H'],
+    ['home', 'Command Center', 'C'],
+    ['objective', 'Campaigns', 'P'],
     ['brand', 'Brand Brain', 'B'],
-    ['director', 'Creative Director', 'D'],
-    ['script', 'Script', 'S'],
-    ['storyboard', 'Storyboard', 'T'],
-    ['assets', 'Asset Plan', 'A'],
-    ['generate', 'Generate / Costs', 'G'],
-    ['review', 'QA / Review', 'Q'],
+    ['director', 'Creative Studio', 'S'],
+    ['assets', 'Assets', 'A'],
+    ['generate', 'Generation', 'G'],
+    ['review', 'Review & QA', 'Q'],
   ]
+  const activeSection = sidebarSection(active)
   return (
     <aside className="sidebar">
       <div className="brand">
@@ -359,7 +414,7 @@ function Sidebar({
         {items.map(([id, label, icon]) => (
           <button
             key={id}
-            className={active === id ? 'active' : ''}
+            className={activeSection === id ? 'active' : ''}
             onClick={() => onNavigate(id)}
             disabled={id !== 'home' && !campaign}
             title={label}
@@ -377,15 +432,20 @@ function Sidebar({
 function Topbar({
   campaign,
   busy,
+  screen,
 }: {
   campaign: Campaign | null
   busy: boolean
+  screen: Screen
 }) {
   return (
     <header className="topbar">
-      <div className="crumb">
-        <b>{campaign?.title || 'CreativeOS'}</b>
-        {campaign && <span>/ {campaign.status.replaceAll('_', ' ')}</span>}
+      <div className="topbar-context">
+        <small>Campaign workflow</small>
+        <div className="crumb">
+          <b>{campaign?.title || 'CreativeOS'}</b>
+          {campaign && screen !== 'home' && <span>/ {screenLabels[screen]}</span>}
+        </div>
       </div>
       <div className="top-actions">
         <span>{busy ? 'Working…' : 'Saved to CreativeOS DB'}</span>
@@ -470,7 +530,7 @@ function Home({
           >
             <div className="thumb" />
             <b>{item.title}</b>
-            <span>{item.status.replaceAll('_', ' ')} · {item.duration_seconds}s · {item.aspect_ratio}</span>
+            <span>{humanizeState(item.status)} · {item.duration_seconds}s · {item.aspect_ratio}</span>
           </button>
         ))}
         {!campaigns.length && (
@@ -796,7 +856,7 @@ function DirectorScreen({
         <h2>{plan ? `Proposal V${plan.version}` : 'Ready to generate'}</h2>
         {plan && (
           <>
-            <Fact label="Status" value={plan.status} good={plan.status === 'APPROVED'} />
+            <Fact label="Status" value={humanizeState(plan.status)} good={plan.status === 'APPROVED'} />
             <Fact
               label="Planned duration"
               value={`${plan.output_json.scene_plan.reduce((sum, scene) => sum + scene.duration_seconds, 0)}s`}
@@ -888,9 +948,9 @@ function StoryboardScreen({
             <small>SCENE {String(scene.position).padStart(2, '0')} · {scene.duration_seconds}s</small>
             <b>{scene.title}</b>
             <span className={scene.scene_type === 'REAL_UI' ? 'real' : 'ai'}>
-              {scene.scene_type}
+              {humanizeState(scene.scene_type)}
             </span>
-            <small>{scene.generation_method}</small>
+            <small>{humanizeState(scene.generation_method)}</small>
           </article>
         ))}
       </div>
@@ -936,9 +996,9 @@ function AssetPlanScreen({
       <div className="asset-grid">
         {plan.items.map((item, index) => (
           <article className="panel asset-card" key={`${item.kind}-${index}`}>
-            <span className="asset-kind">{item.kind}</span>
+            <span className="asset-kind">{humanizeState(item.kind)}</span>
             <h3>{item.purpose}</h3>
-            <Fact label="Status" value={item.status} good={item.status === 'EXISTING'} />
+            <Fact label="Status" value={humanizeState(item.status)} good={item.status === 'EXISTING'} />
             <Fact label="Provider" value={item.provider} />
             <Fact label="Model" value={item.model || 'N/A'} />
             <Fact label="Format" value={`${item.format} · ${item.aspect_ratio}`} />
@@ -1011,7 +1071,7 @@ function GenerationScreen({
                 <small>REQUEST</small>
                 <h2>{request.provider} / {request.model}</h2>
               </div>
-              <span className="status-pill">{request.lifecycle_state}</span>
+              <span className="status-pill">{humanizeState(request.lifecycle_state)}</span>
             </div>
             <div className="fact-grid">
               <Fact label="Quantity" value={String(request.quantity)} />
@@ -1023,7 +1083,7 @@ function GenerationScreen({
           <aside className="panel approval-card">
             <div className="approval-icon">⛔</div>
             <small>APPROVAL STATE</small>
-            <h2>{request.approval_state}</h2>
+            <h2>{humanizeState(request.approval_state)}</h2>
             <p>
               Provider submission is disabled until a separate explicit cost approval occurs.
             </p>
@@ -1053,35 +1113,98 @@ function GenerationScreen({
 
 function GovernanceScreen({ campaign }: { campaign: Campaign }) {
   const [governance, setGovernance] = useState<Governance | null>(null)
+  const [request, setRequest] = useState<GenerationRequest | null>(null)
+  const [loaded, setLoaded] = useState(false)
+
   useEffect(() => {
-    getGovernance(campaign.id).then(response => setGovernance(response.governance))
+    Promise.all([getGovernance(campaign.id), getGenerationRequest(campaign.id)])
+      .then(([governanceResponse, requestResponse]) => {
+        setGovernance(governanceResponse.governance)
+        setRequest(requestResponse.generation_request)
+        setLoaded(true)
+      })
   }, [campaign.id])
-  if (!governance) return <LoadingPage label="Loading governance state…" />
+
+  if (!governance || !loaded) {
+    return <LoadingPage label="Loading governance state…" />
+  }
+
+  const campaignStatus =
+    request?.approval_state === 'COST_APPROVAL_REQUIRED'
+      ? humanizeState(request.approval_state)
+      : request
+        ? humanizeState(request.lifecycle_state)
+        : humanizeState(campaign.status)
+
+  const nextAction =
+    request?.approval_state === 'COST_APPROVAL_REQUIRED'
+      ? 'Approve generation cost to create the first asset.'
+      : !request
+        ? 'Create a governed generation request before production begins.'
+        : governance.automated_qa === 'NOT_GENERATED'
+          ? 'Complete generation before automated QA can run.'
+          : governance.human_review === 'WAITING_FOR_QA'
+            ? 'Complete automated QA before human review.'
+            : governance.export === 'NOT_AVAILABLE'
+              ? 'Complete required review before export becomes available.'
+              : 'Review the governed output before manual publishing.'
+
+  const generationState =
+    request?.approval_state === 'COST_APPROVAL_REQUIRED'
+      ? request.approval_state
+      : request?.lifecycle_state || 'NOT_GENERATED'
+
   const items = [
+    ['Generation', generationState, 'Generation remains bounded by explicit cost approval and provider controls.'],
     ['Automated QA', governance.automated_qa, 'System checks are independent of human acceptance.'],
-    ['Provenance', governance.provenance, 'Provider/model/output lineage appears only after generation.'],
+    ['Provenance', governance.provenance, 'Provider, model, and output lineage appears only after generation.'],
     ['Human Review', governance.human_review, 'A human decision is required after automated QA.'],
     ['Export', governance.export, 'Export cannot become available before required reviews pass.'],
-    ['Publishing', governance.publishing, 'CreativeOS never auto-publishes from this flow.'],
   ]
+
   return (
-    <section className="page">
+    <section className="page governance-page">
       <div className="eyebrow">10 · GOVERNANCE</div>
       <h1>QA ≠ Human Review ≠ Export ≠ Publishing</h1>
       <p className="lede">
-        Downstream state is explicit even before generation begins.
+        Governance reflects persisted campaign and generation state without authorizing spend or publishing.
       </p>
+
+      <div className="panel governance-status">
+        <div>
+          <small>Campaign status</small>
+          <h2>{campaignStatus}</h2>
+        </div>
+        <div>
+          <small>Next action</small>
+          <p>{nextAction}</p>
+        </div>
+      </div>
+
+      <div className="lifecycle-flow" aria-label="Governance lifecycle">
+        Generation → Automated QA → Provenance → Human Review → Export
+      </div>
+
       <div className="governance-grid">
         {items.map(([label, value, note]) => (
           <article className="panel governance-card" key={label}>
             <small>{label}</small>
-            <h2>{value}</h2>
+            <h2>{humanizeState(value)}</h2>
             <p>{note}</p>
           </article>
         ))}
       </div>
-      <div className="panel guard-banner">
-        <b>Automatic publishing: {governance.auto_publish ? 'ENABLED' : 'DISABLED'}</b>
+
+      <div className="panel publishing-control">
+        <div>
+          <small>Publishing control</small>
+          <h2>Manual only</h2>
+          <p>Publishing remains separate from generation, QA, review, and export.</p>
+        </div>
+        <div className="publish-state">
+          <small>Automatic publishing</small>
+          <b>{governance.auto_publish ? 'Enabled' : 'Disabled'}</b>
+        </div>
       </div>
     </section>
   )

@@ -30,7 +30,7 @@ const campaign = {
   cta: 'Book a FleetPilot demo',
   format: '30s Ad',
   duration_seconds: 30,
-  aspect_ratio: '1:1',
+  aspect_ratio: '9:16',
   tone: 'clear, operational, credible',
   status: 'DIRECTOR',
 }
@@ -74,7 +74,7 @@ const storyboard = {
   })),
   duration_seconds: 30,
   campaign_duration_seconds: 30,
-  aspect_ratio: '1:1',
+  aspect_ratio: '9:16',
 }
 const assetPlan = {
   campaign_id: campaign.id,
@@ -87,7 +87,7 @@ const assetPlan = {
       provider: 'HIGGSFIELD',
       model: 'marketing-studio/image',
       format: 'image',
-      aspect_ratio: '1:1',
+      aspect_ratio: '9:16',
       quantity: 1,
     },
     {
@@ -97,7 +97,7 @@ const assetPlan = {
       provider: 'COMPOSITING',
       model: null,
       format: 'approved product UI',
-      aspect_ratio: '1:1',
+      aspect_ratio: '9:16',
       quantity: 1,
     },
   ],
@@ -115,7 +115,7 @@ const generationRequest = {
   approval_required: true,
   approval_state: 'COST_APPROVAL_REQUIRED',
   campaign_duration_seconds: 30,
-  aspect_ratio: '1:1',
+  aspect_ratio: '9:16',
   provider_submissions: 0,
   generation_attempts: 0,
   budget_reservations: 0,
@@ -222,18 +222,18 @@ describe('CreativeOS SaaS runtime bridge', () => {
     expect(mocked.advanceCampaign).toHaveBeenCalledWith(campaign.id, 'AUDIENCE')
   })
 
-  it('shows authoritative 30s and 1:1 Director controls', async () => {
+  it('shows authoritative 30s and 9:16 Director controls', async () => {
     await renderAt('director')
     await screen.findByText(/Turn the authoritative brief/i)
     expect(screen.getAllByText('30s', { selector: 'b' }).length).toBeGreaterThanOrEqual(2)
-    expect(screen.getAllByText('1:1', { selector: 'b' }).length).toBeGreaterThanOrEqual(1)
+    expect(screen.getAllByText('9:16', { selector: 'b' }).length).toBeGreaterThanOrEqual(1)
     expect(screen.getByText(/Planned duration/i)).toBeInTheDocument()
   })
 
-  it('renders storyboard with propagated 30s and 1:1 values', async () => {
+  it('renders storyboard with propagated 30s and 9:16 values', async () => {
     await renderAt('storyboard')
     expect(await screen.findByText(/30s total/)).toBeInTheDocument()
-    expect(screen.getAllByText('1:1').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('9:16').length).toBeGreaterThan(0)
     expect(screen.getByText(/Storyboard duration/i)).toBeInTheDocument()
   })
   it('renders campaign-level Asset Plan with provider, model, quantity and ratio', async () => {
@@ -241,13 +241,13 @@ describe('CreativeOS SaaS runtime bridge', () => {
     expect(await screen.findByRole('heading', { name: /Know exactly/i })).toBeInTheDocument()
     expect(screen.getByText('HIGGSFIELD')).toBeInTheDocument()
     expect(screen.getByText('marketing-studio/image')).toBeInTheDocument()
-    expect(screen.getAllByText(/1:1/).length).toBeGreaterThan(0)
+    expect(screen.getAllByText(/9:16/).length).toBeGreaterThan(0)
     expect(screen.getAllByText('1').length).toBeGreaterThan(0)
   })
 
   it('shows exact governed cost and COST_APPROVAL_REQUIRED with zero spend', async () => {
     await renderAt('generate')
-    expect(await screen.findByText('COST_APPROVAL_REQUIRED')).toBeInTheDocument()
+    expect(await screen.findByText('Awaiting cost approval')).toBeInTheDocument()
     expect(screen.getByText('HIGGSFIELD / marketing-studio/image')).toBeInTheDocument()
     expect(screen.getByText('USD 0.0190', { selector: 'b' })).toBeInTheDocument()
     expect(screen.getByText(/Actual spend · USD 0.00/)).toBeInTheDocument()
@@ -259,25 +259,36 @@ describe('CreativeOS SaaS runtime bridge', () => {
     const button = await screen.findByRole('button', { name: /Re-open same idempotent request/i })
     fireEvent.click(button)
     await waitFor(() => expect(mocked.createGenerationRequest).toHaveBeenCalledTimes(1))
-    expect(screen.getByText('COST_APPROVAL_REQUIRED')).toBeInTheDocument()
+    expect(screen.getByText('Awaiting cost approval')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /approve cost/i })).not.toBeInTheDocument()
   })
 
-  it('separates automated QA, provenance, human review, export and publishing', async () => {
+  it('reconciles governance identity, lifecycle and human-readable persisted state', async () => {
     await renderAt('review')
     expect(await screen.findByRole('heading', { name: /QA ≠ Human Review/i })).toBeInTheDocument()
-    expect(screen.getByText('Automated QA')).toBeInTheDocument()
-    expect(screen.getByText('Provenance')).toBeInTheDocument()
-    expect(screen.getByText('Human Review')).toBeInTheDocument()
-    expect(screen.getByText('Export')).toBeInTheDocument()
-    expect(screen.getByText('Publishing')).toBeInTheDocument()
-    expect(screen.getByText(/Automatic publishing: DISABLED/)).toBeInTheDocument()
+    expect(screen.getByText('/ Governance')).toBeInTheDocument()
+    expect(screen.getByText('Generation → Automated QA → Provenance → Human Review → Export')).toBeInTheDocument()
+    expect(screen.getAllByText('Awaiting cost approval').length).toBeGreaterThanOrEqual(1)
+    expect(screen.getByText('Approve generation cost to create the first asset.')).toBeInTheDocument()
+    expect(screen.getAllByText('Not generated yet').length).toBeGreaterThanOrEqual(2)
+    expect(screen.getByText('Waiting for QA')).toBeInTheDocument()
+    expect(screen.getByText('Not available yet')).toBeInTheDocument()
+    expect(screen.getByText('Publishing control')).toBeInTheDocument()
+    expect(screen.getByText('Manual only')).toBeInTheDocument()
+    expect(screen.getByText('Automatic publishing')).toBeInTheDocument()
+    expect(screen.getByText('Disabled')).toBeInTheDocument()
+    expect(screen.queryByText('NOT_GENERATED')).not.toBeInTheDocument()
+    expect(screen.queryByText('WAITING_FOR_QA')).not.toBeInTheDocument()
+    expect(screen.queryByText('NOT_AVAILABLE')).not.toBeInTheDocument()
+    expect(screen.queryByText('MANUAL_ONLY')).not.toBeInTheDocument()
   })
 
   it('keeps identifiable navigation labels for responsive layouts', async () => {
     await renderAt('director')
     expect(await screen.findByRole('navigation', { name: /CreativeOS navigation/i })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /Generate \/ Costs/i })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /QA \/ Review/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Campaigns/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Creative Studio/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /^Generation$/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Review & QA/i })).toBeInTheDocument()
   })
 })
