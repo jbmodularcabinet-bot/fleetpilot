@@ -80,8 +80,9 @@ jobs:
           if ($exitCode -ne 0) {
             exit $exitCode
           }
-          if (-not ($output -match "Ran 84 tests")) {
-            throw "Backend test count is not 84."
+          $match = [regex]::Match(($output -join "`n"), "Ran (\d+) tests")
+          if (-not $match.Success -or [int]$match.Groups[1].Value -lt 84) {
+            throw "Backend test count dropped below the established 84-test floor."
           }
           if (-not ($output -match "^OK$")) {
             throw "Backend suite did not report OK."

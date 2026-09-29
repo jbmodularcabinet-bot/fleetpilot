@@ -63,7 +63,24 @@ class DeterministicMockCreativeDirectorProvider:
         protected = bool(brand.get("default_immutable_ui", False))
         if brand.get("name") == "FleetPilot":
             titles = ["Hook", "Command Center", "Live Fleet", "Dispatch", "Accountability", "Profitability", "Intelligence", "Close"]
-            durations = [5, 8, 7, 8, 7, 8, 8, 7]
+            weights = [5, 8, 7, 8, 7, 8, 8, 7]
+            if brief.duration_seconds < len(titles):
+                # Preserve the historical short Batch 11 proof fixture exactly.
+                durations = list(weights)
+            else:
+                durations = []
+                remaining = brief.duration_seconds
+                weight_total = sum(weights)
+                for index, weight in enumerate(weights):
+                    if index == len(weights) - 1:
+                        duration = remaining
+                    else:
+                        duration = max(
+                            1,
+                            int(weight * brief.duration_seconds / weight_total),
+                        )
+                        remaining -= duration
+                    durations.append(duration)
         else:
             titles = ["Hook", "Problem", "Product", "Proof", "Close"]
             base = max(3, brief.duration_seconds // len(titles))

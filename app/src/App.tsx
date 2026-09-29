@@ -1,170 +1,1098 @@
-import { useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import './App.css'
+import {
+  advanceCampaign,
+  approveDirector,
+  createCampaign,
+  createGenerationRequest,
+  generateDirector,
+  getAssetPlan,
+  getBrand,
+  getCampaign,
+  getDirector,
+  getGenerationRequest,
+  getGovernance,
+  getStoryboard,
+  listCampaigns,
+  updateCampaign,
+  type AssetPlan,
+  type Brand,
+  type Campaign,
+  type DirectorPlan,
+  type GenerationRequest,
+  type Governance,
+  type StoryboardData,
+} from './api'
 
-type Screen = 'home' | 'brand' | 'director' | 'storyboard'
+type Screen =
+  | 'home'
+  | 'objective'
+  | 'audience'
+  | 'offer'
+  | 'brand'
+  | 'director'
+  | 'script'
+  | 'storyboard'
+  | 'assets'
+  | 'generate'
+  | 'review'
 
-const nav = [
-  ['home', 'Home'], ['brand', 'Brand Brain'], ['director', 'Creative Director'], ['storyboard', 'Storyboard'],
-  ['assets', 'Assets'], ['generate', 'Generate'], ['review', 'Review'],
-  ['costs', 'Costs'], ['settings', 'Settings'],
-] as const
+const scenario =
+  'Create a Meta ad campaign for Philippine trucking and logistics owners that drives qualified demo inquiries.'
 
-const scenes = [
-  ['01', 'Hook', 'AI VIDEO', '5s'], ['02', 'Command Center', 'REAL UI', '8s'],
-  ['03', 'Live Fleet', 'REAL UI', '7s'], ['04', 'Dispatch', 'REAL UI', '8s'],
-  ['05', 'Accountability', 'REAL UI', '7s'], ['06', 'Profitability', 'REAL UI', '8s'],
-  ['07', 'Intelligence', 'REAL UI', '8s'], ['08', 'Close', 'TYPOGRAPHY', '7s'],
+const stageScreen: Record<string, Screen> = {
+  OBJECTIVE: 'objective',
+  AUDIENCE: 'audience',
+  OFFER: 'offer',
+  BRAND: 'brand',
+  DIRECTOR: 'director',
+  SCRIPT: 'script',
+  STORYBOARD: 'storyboard',
+  ASSET_PLAN: 'assets',
+  GENERATION_REQUEST: 'generate',
+  COST_APPROVAL_REQUIRED: 'generate',
+}
+
+const workflow: Array<[Screen, string]> = [
+  ['objective', 'Objective'],
+  ['audience', 'Audience'],
+  ['offer', 'Offer'],
+  ['brand', 'Brand Brain'],
+  ['director', 'Director'],
+  ['script', 'Script'],
+  ['storyboard', 'Storyboard'],
+  ['assets', 'Asset Plan'],
+  ['generate', 'Generation'],
+  ['review', 'Governance'],
 ]
 
-function App() {
-  const [screen, setScreen] = useState<Screen>('home')
-  const [selectedScene, setSelectedScene] = useState(1)
+function screenFromUrl(): Screen {
+  const raw = new URLSearchParams(window.location.search).get('screen')
+  return workflow.some(([id]) => id === raw) || raw === 'home'
+    ? (raw as Screen)
+    : 'home'
+}
 
-  return <div className="app-shell">
+function App() {
+  const [screen, setScreen] = useState<Screen>(screenFromUrl())
+  const [campaign, setCampaign] = useState<Campaign | null>(null)
+  const [campaigns, setCampaigns] = useState<Campaign[]>([])
+  const [homeBrief, setHomeBrief] = useState(scenario)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+
+  const navigate = useCallback(
+    (next: Screen, campaignId = campaign?.id, replace = false) => {
+      const params = new URLSearchParams()
+      if (campaignId) params.set('campaign', campaignId)
+      params.set('screen', next)
+      const url = '?' + params.toString()
+      if (replace) window.history.replaceState({}, '', url)
+      else window.history.pushState({}, '', url)
+      setScreen(next)
+      setError('')
+    },
+    [campaign?.id],
+  )
+
+  const reloadCampaign = useCallback(async (id: string) => {
+    const response = await getCampaign(id)
+    setCampaign(response.campaign)
+    return response.campaign
+  }, [])
+
+  const loadLocation = useCallback(async () => {
+    const params = new URLSearchParams(window.location.search)
+    const campaignId = params.get('campaign')
+    if (!campaignId) {
+      setCampaign(null)
+      setScreen(screenFromUrl())
+      return
+    }
+    try {
+      const loaded = await reloadCampaign(campaignId)
+      const requested = params.get('screen')
+      const restored =
+        requested && (workflow.some(([id]) => id === requested) || requested === 'home')
+          ? (requested as Screen)
+          : stageScreen[loaded.status] || 'objective'
+      setScreen(restored)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
+      setCampaign(null)
+      setScreen('home')
+    }
+  }, [reloadCampaign])
+
+  useEffect(() => {
+    listCampaigns().then(r => setCampaigns(r.campaigns)).catch(() => {})
+    const timer = window.setTimeout(() => void loadLocation(), 0)
+    const onPop = () => void loadLocation()
+    window.addEventListener('popstate', onPop)
+    return () => {
+      window.clearTimeout(timer)
+      window.removeEventListener('popstate', onPop)
+    }
+  }, [loadLocation])
+
+  const run = async (action: () => Promise<void>) => {
+    setBusy(true)
+    setError('')
+    try {
+      await action()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const createFleetPilotCampaign = () =>
+    run(async () => {
+      const response = await createCampaign(
+        'FleetPilot Meta Lead Campaign',
+        homeBrief,
+      )
+      setCampaign(response.campaign)
+      setCampaigns(prev => {
+        const next = prev.filter(x => x.id !== response.campaign.id)
+        return [response.campaign, ...next]
+      })
+      navigate('objective', response.campaign.id)
+    })
+
+  const selectCampaign = (item: Campaign) =>
+    run(async () => {
+      const loaded = await reloadCampaign(item.id)
+      navigate(stageScreen[loaded.status] || 'objective', loaded.id)
+    })
+
+  const saveAndAdvance = (
+    values: Partial<Campaign>,
+    stage: string,
+    next: Screen,
+  ) =>
+    run(async () => {
+      if (!campaign) throw new Error('Campaign is required')
+      const updated = await updateCampaign(campaign.id, values)
+      const advanced = await advanceCampaign(campaign.id, stage)
+      setCampaign({ ...updated.campaign, status: advanced.campaign.status })
+      navigate(next, campaign.id)
+    })
+
+  const currentIndex = useMemo(
+    () => workflow.findIndex(([id]) => id === screen),
+    [screen],
+  )
+
+  return (
+    <div className="app-shell">
+      <Sidebar
+        active={screen}
+        campaign={campaign}
+        onNavigate={next => navigate(next)}
+      />
+      <main className="workspace">
+        <Topbar campaign={campaign} busy={busy} />
+        {campaign && screen !== 'home' && (
+          <Progress activeIndex={currentIndex} />
+        )}
+        {error && <div className="error-banner" role="alert">{error}</div>}
+        {screen === 'home' && (
+          <Home
+            value={homeBrief}
+            onChange={setHomeBrief}
+            onCreate={createFleetPilotCampaign}
+            campaigns={campaigns}
+            onSelect={selectCampaign}
+            busy={busy}
+          />
+        )}
+        {campaign && screen === 'objective' && (
+          <ObjectiveScreen
+            campaign={campaign}
+            busy={busy}
+            onNext={objective => {
+              if (!objective.trim()) {
+                setError('Campaign objective is required')
+                return
+              }
+              void saveAndAdvance({ objective }, 'AUDIENCE', 'audience')
+            }}
+          />
+        )}
+        {campaign && screen === 'audience' && (
+          <AudienceScreen
+            campaign={campaign}
+            busy={busy}
+            onNext={audience => {
+              if (!audience.trim()) {
+                setError('Audience is required')
+                return
+              }
+              void saveAndAdvance({ audience }, 'OFFER', 'offer')
+            }}
+          />
+        )}
+        {campaign && screen === 'offer' && (
+          <OfferScreen
+            campaign={campaign}
+            busy={busy}
+            onNext={values => {
+              if (!values.offer?.trim()) {
+                setError('Core offer is required')
+                return
+              }
+              void saveAndAdvance(values, 'BRAND', 'brand')
+            }}
+          />
+        )}
+        {campaign && screen === 'brand' && (
+          <BrandScreen
+            campaign={campaign}
+            busy={busy}
+            onContinue={() =>
+              void run(async () => {
+                const response = await advanceCampaign(campaign.id, 'DIRECTOR')
+                setCampaign(response.campaign)
+                navigate('director', campaign.id)
+              })
+            }
+          />
+        )}
+        {campaign && screen === 'director' && (
+          <DirectorScreen
+            campaign={campaign}
+            busy={busy}
+            onCampaign={setCampaign}
+            onContinue={() => navigate('script', campaign.id)}
+            run={run}
+          />
+        )}
+        {campaign && screen === 'script' && (
+          <ScriptScreen
+            campaign={campaign}
+            busy={busy}
+            onContinue={() =>
+              void run(async () => {
+                const response = await advanceCampaign(campaign.id, 'STORYBOARD')
+                setCampaign(response.campaign)
+                navigate('storyboard', campaign.id)
+              })
+            }
+          />
+        )}
+        {campaign && screen === 'storyboard' && (
+          <StoryboardScreen
+            campaign={campaign}
+            busy={busy}
+            onContinue={() => navigate('assets', campaign.id)}
+          />
+        )}
+        {campaign && screen === 'assets' && (
+          <AssetPlanScreen
+            campaign={campaign}
+            busy={busy}
+            onCampaign={setCampaign}
+            onContinue={() =>
+              void run(async () => {
+                const response = await advanceCampaign(
+                  campaign.id,
+                  'GENERATION_REQUEST',
+                )
+                setCampaign(response.campaign)
+                navigate('generate', campaign.id)
+              })
+            }
+          />
+        )}
+        {campaign && screen === 'generate' && (
+          <GenerationScreen
+            campaign={campaign}
+            busy={busy}
+            onCampaign={setCampaign}
+            onReview={() => navigate('review', campaign.id)}
+          />
+        )}
+        {campaign && screen === 'review' && (
+          <GovernanceScreen campaign={campaign} />
+        )}
+        {!campaign && screen !== 'home' && (
+          <section className="page">
+            <h1>No campaign selected</h1>
+            <button className="primary" onClick={() => navigate('home')}>
+              Return Home
+            </button>
+          </section>
+        )}
+      </main>
+    </div>
+  )
+}
+
+function Sidebar({
+  active,
+  campaign,
+  onNavigate,
+}: {
+  active: Screen
+  campaign: Campaign | null
+  onNavigate: (screen: Screen) => void
+}) {
+  const items: Array<[Screen, string, string]> = [
+    ['home', 'Home', 'H'],
+    ['brand', 'Brand Brain', 'B'],
+    ['director', 'Creative Director', 'D'],
+    ['script', 'Script', 'S'],
+    ['storyboard', 'Storyboard', 'T'],
+    ['assets', 'Asset Plan', 'A'],
+    ['generate', 'Generate / Costs', 'G'],
+    ['review', 'QA / Review', 'Q'],
+  ]
+  return (
     <aside className="sidebar">
-      <div className="brand"><span className="brand-mark">C</span><strong>Creative<span>OS</span></strong></div>
-      <nav>{nav.map(([id, label]) => <button key={id} className={screen === id ? 'active' : ''}
-        onClick={() => ['home','brand','director','storyboard'].includes(id) && setScreen(id as Screen)}>{label}</button>)}</nav>
+      <div className="brand">
+        <span className="brand-mark">C</span>
+        <strong>Creative<span>OS</span></strong>
+      </div>
+      <nav aria-label="CreativeOS navigation">
+        {items.map(([id, label, icon]) => (
+          <button
+            key={id}
+            className={active === id ? 'active' : ''}
+            onClick={() => onNavigate(id)}
+            disabled={id !== 'home' && !campaign}
+            title={label}
+          >
+            <span className="nav-icon" aria-hidden="true">{icon}</span>
+            <span className="nav-label">{label}</span>
+          </button>
+        ))}
+      </nav>
       <div className="local-badge">● LOCAL V1</div>
     </aside>
-    <main>
-      <header className="topbar"><div><b>FleetPilot</b><span>/ Launch Explainer</span></div><div className="top-actions"><span>Saved locally</span><button className="ghost">⌘ K</button><button className="primary">Run Director</button></div></header>
-      {screen === 'home' && <Home onStart={() => setScreen('director')} />}
-      {screen === 'brand' && <BrandBrain />}
-      {screen === 'director' && <Director onStoryboard={() => setScreen('storyboard')} />}
-      {screen === 'storyboard' && <Storyboard selected={selectedScene} onSelect={setSelectedScene} />}
-    </main>
-  </div>
-}
-function Home({ onStart }: { onStart: () => void }) {
-  return <section className="page home-page">
-    <div className="eyebrow">AI CREATIVE PRODUCTION OS</div>
-    <h1>Create something that moves the business.</h1>
-    <p className="lede">Plan, direct, generate, review, and export from one local creative workspace.</p>
-    <div className="command-card">
-      <textarea defaultValue="Create a 60-second FleetPilot explainer for Philippine trucking owners." />
-      <div className="command-row"><div className="chips"><span>60s Explainer</span><span>Real UI First</span><span>Balanced Cost</span></div><button className="primary" onClick={onStart}>Direct Campaign →</button></div>
-    </div>
-    <div className="section-head"><h2>Recent campaigns</h2><span>4 active</span></div>
-    <div className="campaign-grid">{['FleetPilot Explainer','SmartRoom Launch','JB Cabinet Promo','Product Screens'].map((x,i)=><article className="campaign-card" key={x}><div className={`thumb t${i+1}`}></div><b>{x}</b><span>{i===0?'Storyboard ready':'Draft'} · {8-i} scenes</span></article>)}</div>
-  </section>
+  )
 }
 
-type DirectorTab = 'Strategy' | 'Script' | 'Visual Plan' | 'Asset Needs' | 'Budget'
-type DirectorProposal = { version:number; status:'DRAFT'|'APPROVED'; hook:string; scenes:number; realUi:number; duration:number; low:number; high:number }
-
-function Director({ onStoryboard }: { onStoryboard: () => void }) {
-  const [objective,setObjective]=useState('Create a 60-second FleetPilot explainer for Philippine trucking owners.')
-  const [audience,setAudience]=useState('Philippine trucking company owners, managers, dispatchers, operators')
-  const [offer,setOffer]=useState('Operational control, dispatch visibility, trip profitability, accountability')
-  const [cta,setCta]=useState('See FleetPilot in action')
-  const [format,setFormat]=useState('60s Explainer')
-  const [duration,setDuration]=useState(60)
-  const [ratio,setRatio]=useState('16:9')
-  const [tab,setTab]=useState<DirectorTab>('Strategy')
-  const [proposals,setProposals]=useState<DirectorProposal[]>(()=>{const raw=localStorage.getItem('creativeos.director.fleetpilot');return raw?JSON.parse(raw) as DirectorProposal[]:[]})
-  const current=proposals.at(-1)
-  const generate=()=>{const next:DirectorProposal={version:(current?.version??0)+1,status:'DRAFT',hook:'Profit leaks start where visibility ends.',scenes:8,realUi:85,duration:58,low:80,high:250};const all=[...proposals,next];setProposals(all);localStorage.setItem('creativeos.director.fleetpilot',JSON.stringify(all))}
-  const approve=()=>{if(!current)return;const all=proposals.map((p,i)=>i===proposals.length-1?{...p,status:'APPROVED' as const}:p);setProposals(all);localStorage.setItem('creativeos.director.fleetpilot',JSON.stringify(all))}
-  return <section className="page director-grid">
-    <div className="director-main"><div className="eyebrow">CREATIVE DIRECTOR</div><h1>Turn the brief into a production plan.</h1>
-      <div className="panel"><label>Campaign objective</label><textarea aria-label="Campaign objective" value={objective} onChange={e=>setObjective(e.target.value)} /></div>
-      <div className="two-col"><div className="panel"><label>Audience</label><textarea aria-label="Director audience" value={audience} onChange={e=>setAudience(e.target.value)} /></div><div className="panel"><label>Core offer</label><textarea aria-label="Core offer" value={offer} onChange={e=>setOffer(e.target.value)} /></div></div>
-      <div className="two-col"><div className="panel"><label>CTA</label><input aria-label="CTA" value={cta} onChange={e=>setCta(e.target.value)} /></div><div className="panel"><label>Format</label><select aria-label="Campaign format" value={format} onChange={e=>setFormat(e.target.value)}><option>60s Explainer</option><option>30s Ad</option><option>15s Reel</option><option>Product Walkthrough</option><option>Landing Hero</option></select></div></div>
-      <div className="panel production-row"><label>Production controls</label><input aria-label="Duration" type="number" value={duration} onChange={e=>setDuration(Number(e.target.value))}/><select aria-label="Aspect ratio" value={ratio} onChange={e=>setRatio(e.target.value)}><option>16:9</option><option>9:16</option><option>1:1</option></select><span>English</span><span>Real UI 85%</span><span>Generated 15%</span></div>
-      <div className="panel lock-strip"><label>Brand locks</label><span>✓ Logo</span><span>✓ Palette</span><span>✓ Real UI preservation</span><span>✓ Tone</span></div>
-      <div className="director-tabs">{(['Strategy','Script','Visual Plan','Asset Needs','Budget'] as DirectorTab[]).map(t=><button className={tab===t?'active':''} onClick={()=>setTab(t)} key={t}>{t}</button>)}</div>
-      <div className="panel director-output">{!current?<p>Generate a strategy to create the first Director proposal.</p>:<DirectorTabView tab={tab} proposal={current} offer={offer} cta={cta}/>}</div>
-    </div>
-    <aside className="intel-panel"><div className="ai-status">● MOCK DIRECTOR</div><h2>{current?'Director proposal':'Ready to generate'}</h2>{current&&<><div className="strategy-block"><small>HOOK</small><b>{current.hook}</b></div><div className="metric-row"><div><small>SCENES</small><b>{current.scenes}</b></div><div><small>REAL UI</small><b>{current.realUi}%</b></div><div><small>DURATION</small><b>{current.duration}s</b></div></div><div className="strategy-block"><small>STATUS</small><b className={current.status==='APPROVED'?'good':''}>{current.status} · V{current.version}</b></div></>}
-      <button className="ghost wide" onClick={generate}>{current?'Regenerate Strategy':'Generate Strategy'}</button><button className="primary wide" disabled={!current} onClick={approve}>Approve Plan</button><button className="primary wide" disabled={!current||current.status!=='APPROVED'} onClick={onStoryboard}>Send to Storyboard →</button></aside>
-  </section>
-}
-function DirectorTabView({tab,proposal,offer,cta}:{tab:DirectorTab;proposal:DirectorProposal;offer:string;cta:string}) {
-  if(tab==='Strategy') return <div><h2>Product truth first</h2><p><b>Primary promise:</b> {offer}</p><p><b>CTA:</b> {cta}</p><p>Problem → product visibility → operational proof → action.</p></div>
-  if(tab==='Script') return <div><h2>Scene-linked script</h2><p>01 Hook · Profit leaks start where visibility ends.</p><p>02–07 Product proof through approved real FleetPilot UI.</p><p>08 Close · {cta}</p></div>
-  if(tab==='Visual Plan') return <div><h2>Visual plan</h2><p>85% REAL UI using compositing only. 15% restrained cinematic support footage.</p><p>Approved UI is never regenerated.</p></div>
-  if(tab==='Asset Needs') return <div><h2>Asset needs</h2><p>Primary logo · approved dashboard screenshots · dispatch UI · profitability UI · voiceover.</p></div>
-  return <div><h2>Budget estimate</h2><p>ESTIMATE · low ₱{proposal.low} / high ₱{proposal.high}</p><p>REAL UI scenes are compositing-only and carry no generation estimate in Batch 4.</p></div>
-}
-type StoryTab='Direction'|'Script'|'Visual'|'Assets'|'Generation'|'Versions'
-type UIScene={id:string;title:string;type:string;duration:number;status:string;approval:string;locked:boolean;qa:string;low:number;high:number;versions:number}
-const INITIAL_UI_SCENES:UIScene[]=scenes.map((s,i)=>({id:s[0],title:s[1],type:s[2].replaceAll(' ','_'),duration:Number(s[3].replace('s','')),status:'READY',approval:'DRAFT',locked:false,qa:'READY',low:i===0?18:0,high:i===0?35:0,versions:0}))
-
-function Storyboard({ selected, onSelect }: { selected: number; onSelect: (i:number)=>void }) {
-  const [items,setItems]=useState<UIScene[]>(()=>{const raw=localStorage.getItem('creativeos.storyboard.fleetpilot');return raw?JSON.parse(raw) as UIScene[]:INITIAL_UI_SCENES})
-  const [tab,setTab]=useState<StoryTab>('Direction')
-  const active=items[selected]??items[0]
-  const persist=(next:UIScene[])=>{setItems(next);localStorage.setItem('creativeos.storyboard.fleetpilot',JSON.stringify(next))}
-  const patch=(values:Partial<UIScene>)=>persist(items.map((x,i)=>i===selected?{...x,...values}:x))
-  const duplicate=()=>persist([...items,{...active,id:String(items.length+1).padStart(2,'0'),title:active.title+' Copy',approval:'DRAFT',locked:false,versions:0}])
-  const remove=()=>{if(active.locked||active.approval==='APPROVED')return;const next=items.filter((_,i)=>i!==selected);persist(next);onSelect(Math.max(0,selected-1))}
-  const move=(delta:number)=>{const j=selected+delta;if(j<0||j>=items.length)return;const next=[...items];[next[selected],next[j]]=[next[j],next[selected]];persist(next);onSelect(j)}
-  const version=()=>patch({versions:active.versions+1})
-  const total=items.reduce((a,x)=>a+x.duration,0), low=items.reduce((a,x)=>a+x.low,0), high=items.reduce((a,x)=>a+x.high,0)
-  const approved=items.filter(x=>x.approval==='APPROVED').length, ready=items.filter(x=>x.status==='READY').length
-  return <section className="page storyboard-page">
-    <div className="story-head"><div><div className="eyebrow">STORYBOARD</div><h1>FleetPilot Explainer</h1><p>{total}s · ESTIMATE ₱{low}–₱{high} · {approved} approved · {ready} ready</p></div><div><button className="ghost">Preview</button><button className="primary">Generate Ready Scenes</button></div></div>
-    <div className="scene-strip">{items.map((x,i)=><button key={x.id} onClick={()=>onSelect(i)} className={'scene-card '+(selected===i?'selected':'')}><div className={'scene-preview p'+((i%8)+1)}></div><small>SCENE {String(i+1).padStart(2,'0')} · {x.duration}s {x.locked?'· LOCKED':''}</small><b>{x.title}</b><span className={x.type==='REAL_UI'?'real':'ai'}>{x.type}</span><small>{x.status} · {x.approval} · QA {x.qa}</small></button>)}</div>
-    <div className="scene-workspace">
-      <div className="panel scene-editor">
-        <div className="tabs">{(['Direction','Script','Visual','Assets','Generation','Versions'] as StoryTab[]).map(t=><button key={t} className={tab===t?'active':''} onClick={()=>setTab(t)}>{t}</button>)}</div>
-        <StoryboardTab tab={tab} scene={active} onVersion={version}/>
-        <div className="scene-actions"><button onClick={()=>move(-1)}>Move Left</button><button onClick={()=>move(1)}>Move Right</button><button onClick={duplicate}>Duplicate</button><button onClick={()=>patch({locked:!active.locked})}>{active.locked?'Unlock':'Lock'}</button><button onClick={()=>patch({approval:active.approval==='APPROVED'?'DRAFT':'APPROVED'})}>{active.approval==='APPROVED'?'Unapprove':'Approve'}</button><button onClick={remove}>Delete</button></div>
+function Topbar({
+  campaign,
+  busy,
+}: {
+  campaign: Campaign | null
+  busy: boolean
+}) {
+  return (
+    <header className="topbar">
+      <div className="crumb">
+        <b>{campaign?.title || 'CreativeOS'}</b>
+        {campaign && <span>/ {campaign.status.replaceAll('_', ' ')}</span>}
       </div>
-      <aside className="panel inspector"><h3>Scene Inspector</h3><div className="kv"><span>Duration</span><b>{active.duration}s</b></div><div className="kv"><span>Output</span><b>16:9 · 1080p</b></div><div className="kv"><span>Scene type</span><b>{active.type}</b></div><div className="kv"><span>UI preservation</span><b className={active.type==='REAL_UI'?'good':''}>{active.type==='REAL_UI'?'LOCKED · COMPOSITING ONLY':'STANDARD'}</b></div><div className="kv"><span>Approval</span><b>{active.approval}</b></div><div className="kv"><span>Lock</span><b>{active.locked?'LOCKED':'OPEN'}</b></div><div className="kv"><span>QA</span><b className="good">{active.qa}</b></div><div className="cost-box"><small>ESTIMATED GENERATION</small><b>₱{active.low}–₱{active.high}</b></div><button className="primary wide" onClick={version}>{active.type==='REAL_UI'?'Create Compositing Version':'Generate Scene'}</button></aside>
+      <div className="top-actions">
+        <span>{busy ? 'Working…' : 'Saved to CreativeOS DB'}</span>
+        {campaign && (
+          <span className="status-pill">{campaign.duration_seconds}s · {campaign.aspect_ratio}</span>
+        )}
+      </div>
+    </header>
+  )
+}
+
+function Progress({ activeIndex }: { activeIndex: number }) {
+  return (
+    <div className="progress-strip" aria-label="Campaign workflow">
+      {workflow.map(([, label], index) => (
+        <div
+          key={label}
+          className={
+            'progress-step ' +
+            (index === activeIndex ? 'active ' : '') +
+            (index < activeIndex ? 'done' : '')
+          }
+        >
+          <span>{index + 1}</span>
+          <b>{label}</b>
+        </div>
+      ))}
     </div>
-  </section>
-}
-function StoryboardTab({tab,scene,onVersion}:{tab:StoryTab;scene:UIScene;onVersion:()=>void}) {
-  if(tab==='Direction') return <div><label>Scene purpose</label><h2>{scene.title}</h2><p>Advance the narrative while preserving the approved campaign strategy.</p><p>Transition in: editorial · Transition out: editorial · Motion: low</p></div>
-  if(tab==='Script') return <div><h2>Script & timing</h2><p>Voiceover for {scene.title}. On-screen copy and subtitle remain editable in production.</p><p>Timing: {scene.duration}s</p></div>
-  if(tab==='Visual') return <div><h2>Visual direction</h2><p>{scene.type==='REAL_UI'?'Use approved real UI only; crop, pan, focus, cursor and callouts.':'Use restrained generated/support visuals.'}</p></div>
-  if(tab==='Assets') return <div><h2>Asset assignments</h2><p>{scene.type==='REAL_UI'?'Approved UI asset required · immutable':'Support visual assets may be assigned.'}</p></div>
-  if(tab==='Generation') return <div><h2>Generation</h2><p>Method: {scene.type==='REAL_UI'?'COMPOSITING_ONLY':'AUTO / GENERATIVE'}</p><p>Provider recommendation: {scene.type==='REAL_UI'?'COMPOSITING':'AUTO'}</p><button onClick={onVersion}>{scene.type==='REAL_UI'?'New Compositing Version':'Generate Variant'}</button></div>
-  return <div><h2>Versions</h2><p>{scene.versions?Array.from({length:scene.versions},(_,i)=>String.fromCharCode(65+i)).map(v=>'Version '+v).join(' · '):'No versions yet.'}</p><button onClick={onVersion}>Create Version</button></div>
+  )
 }
 
-type BrandState = {
-  name: string; industry: string; audience: string; positioning: string;
-  tagline: string; palette: string; fonts: string; immutable: boolean;
-  uiFolders: string; preserve: string; adapt: string; never: string;
-  logoPath: string; iconPath: string; targetMarket: string; messaging: string; prohibitedMessaging: string;
+function Home({
+  value,
+  onChange,
+  onCreate,
+  campaigns,
+  onSelect,
+  busy,
+}: {
+  value: string
+  onChange: (value: string) => void
+  onCreate: () => void
+  campaigns: Campaign[]
+  onSelect: (campaign: Campaign) => void
+  busy: boolean
+}) {
+  return (
+    <section className="page home-page">
+      <div className="eyebrow">AI CREATIVE PRODUCTION OS</div>
+      <h1>Create something that moves the business.</h1>
+      <p className="lede">
+        Plan, govern, cost, review, and export from one local creative workspace.
+      </p>
+      <div className="command-card">
+        <label htmlFor="campaign-brief">Campaign brief</label>
+        <textarea
+          id="campaign-brief"
+          value={value}
+          onChange={event => onChange(event.target.value)}
+        />
+        <div className="command-row">
+          <div className="chips">
+            <span>FleetPilot</span>
+            <span>Meta Lead Campaign</span>
+            <span>Governed Cost</span>
+          </div>
+          <button className="primary" disabled={busy} onClick={onCreate}>
+            Create FleetPilot Campaign →
+          </button>
+        </div>
+      </div>
+      <div className="section-head">
+        <h2>Campaigns</h2>
+        <span>{campaigns.length} saved</span>
+      </div>
+      <div className="campaign-grid">
+        {campaigns.map(item => (
+          <button
+            className="campaign-card"
+            key={item.id}
+            onClick={() => onSelect(item)}
+          >
+            <div className="thumb" />
+            <b>{item.title}</b>
+            <span>{item.status.replaceAll('_', ' ')} · {item.duration_seconds}s · {item.aspect_ratio}</span>
+          </button>
+        ))}
+        {!campaigns.length && (
+          <div className="empty-card">No campaigns yet. Create the first governed campaign above.</div>
+        )}
+      </div>
+    </section>
+  )
 }
 
-const FLEETPILOT_BRAND: BrandState = {
-  name: 'FleetPilot', industry: 'Fleet Management SaaS / Logistics Operating System',
-  audience: 'Philippine trucking company owners, managers, dispatchers, operators',
-  positioning: 'One operating system for fleet visibility, dispatch control, accountability, and profitability.',
-  tagline: 'Track. Dispatch. Control. Grow.', palette: '#0F1514, #56E0B0, #F5F7F6',
-  fonts: 'Inter', immutable: true, uiFolders: '', logoPath: '', iconPath: '',
-  targetMarket: 'Philippines', messaging: 'operational visibility, trip profitability, fleet control, accountability',
-  prohibitedMessaging: 'Unsubstantiated performance or savings claims',
-  preserve: 'Approved FleetPilot UI screenshots and screen recordings',
-  adapt: 'Crop, scale, pan, zoom, callouts, cursor motion',
-  never: 'Generative repainting, text recreation, layout regeneration',
+function ObjectiveScreen({
+  campaign,
+  busy,
+  onNext,
+}: {
+  campaign: Campaign
+  busy: boolean
+  onNext: (objective: string) => void
+}) {
+  const [value, setValue] = useState(campaign.objective)
+  return (
+    <BriefStep
+      eyebrow="01 · OBJECTIVE"
+      title="What should this campaign achieve?"
+      help="Define a measurable business objective before creative direction begins."
+    >
+      <label htmlFor="objective">Campaign objective</label>
+      <textarea
+        id="objective"
+        aria-label="Campaign objective"
+        value={value}
+        onChange={event => setValue(event.target.value)}
+      />
+      <StepFooter>
+        <button className="primary" disabled={busy} onClick={() => onNext(value)}>
+          Save Objective →
+        </button>
+      </StepFooter>
+    </BriefStep>
+  )
 }
 
-function BrandBrain() {
-  const [brand, setBrand] = useState<BrandState>(() => {
-    const saved = localStorage.getItem('creativeos.brand.fleetpilot')
-    return saved ? JSON.parse(saved) as BrandState : FLEETPILOT_BRAND
-  })
-  const [saved, setSaved] = useState(false)
-  const update = (key: keyof BrandState, value: string | boolean) => setBrand(prev => ({...prev, [key]: value}))
-  const save = () => { localStorage.setItem('creativeos.brand.fleetpilot', JSON.stringify(brand)); setSaved(true) }
-  const createNew = () => { setBrand({...FLEETPILOT_BRAND, name:'', industry:'', audience:'', positioning:'', tagline:'', messaging:'', prohibitedMessaging:'', immutable:true}); setSaved(false) }
-  return <section className="page brand-brain-grid">
-    <div className="brand-main"><div className="eyebrow">BRAND BRAIN</div><h1>Keep every campaign unmistakably on brand.</h1>
-      <div className="two-col"><div className="panel"><label>Brand identity</label><input aria-label="Brand name" value={brand.name} onChange={e=>update('name',e.target.value)} /><input aria-label="Industry" value={brand.industry} onChange={e=>update('industry',e.target.value)} /><input aria-label="Logo path" placeholder="C:\\...\logo.png" value={brand.logoPath} onChange={e=>update('logoPath',e.target.value)} /><input aria-label="Icon path" placeholder="C:\\...\icon.png" value={brand.iconPath} onChange={e=>update('iconPath',e.target.value)} /></div><div className="panel"><label>Audience</label><textarea aria-label="Audience" value={brand.audience} onChange={e=>update('audience',e.target.value)} /><input aria-label="Target market" value={brand.targetMarket} onChange={e=>update('targetMarket',e.target.value)} /></div></div>
-      <div className="panel"><label>Positioning</label><textarea aria-label="Positioning" value={brand.positioning} onChange={e=>update('positioning',e.target.value)} /><input aria-label="Tagline" value={brand.tagline} onChange={e=>update('tagline',e.target.value)} /></div>
-      <div className="two-col"><div className="panel"><label>Approved messaging</label><textarea aria-label="Approved messaging" value={brand.messaging} onChange={e=>update('messaging',e.target.value)} /></div><div className="panel"><label>Prohibited messaging</label><textarea aria-label="Prohibited messaging" value={brand.prohibitedMessaging} onChange={e=>update('prohibitedMessaging',e.target.value)} /></div></div>
-      <div className="two-col"><div className="panel"><label>Visual system</label><input aria-label="Colors" value={brand.palette} onChange={e=>update('palette',e.target.value)} /><input aria-label="Typography" value={brand.fonts} onChange={e=>update('fonts',e.target.value)} /></div><div className="panel"><label>Approved UI folder</label><input aria-label="Approved UI folder" placeholder="C:\\..." value={brand.uiFolders} onChange={e=>update('uiFolders',e.target.value)} /><span className="path-status">{brand.uiFolders ? 'Path reference set' : 'No folder configured'}</span></div></div>
-      <div className="panel protection-card"><div><label>Product UI Protection</label><h2>Preserve approved product truth</h2><p>Approved SaaS UI inherits immutable protection by default.</p></div><button aria-pressed={brand.immutable} className={brand.immutable?'toggle on':'toggle'} onClick={()=>update('immutable',!brand.immutable)}>{brand.immutable?'LOCKED':'OFF'}</button></div>
-      <div className="rule-grid"><div className="panel"><label>Must preserve</label><textarea value={brand.preserve} onChange={e=>update('preserve',e.target.value)} /></div><div className="panel"><label>May adapt</label><textarea value={brand.adapt} onChange={e=>update('adapt',e.target.value)} /></div><div className="panel"><label>Never do</label><textarea value={brand.never} onChange={e=>update('never',e.target.value)} /></div></div>
+function AudienceScreen({
+  campaign,
+  busy,
+  onNext,
+}: {
+  campaign: Campaign
+  busy: boolean
+  onNext: (audience: string) => void
+}) {
+  const [value, setValue] = useState(campaign.audience)
+  return (
+    <BriefStep
+      eyebrow="02 · AUDIENCE"
+      title="Who needs to see this?"
+      help="FleetPilot is being positioned for Philippine trucking and logistics operators."
+    >
+      <label htmlFor="audience">Target audience</label>
+      <textarea
+        id="audience"
+        aria-label="Campaign audience"
+        value={value}
+        onChange={event => setValue(event.target.value)}
+      />
+      <div className="pain-grid">
+        {['Fuel leakage','Dispatch confusion','Downtime','Late deliveries','Driver accountability','Trip profitability','Collections'].map(pain => (
+          <span key={pain}>{pain}</span>
+        ))}
+      </div>
+      <StepFooter>
+        <button className="primary" disabled={busy} onClick={() => onNext(value)}>
+          Save Audience →
+        </button>
+      </StepFooter>
+    </BriefStep>
+  )
+}
+
+function OfferScreen({
+  campaign,
+  busy,
+  onNext,
+}: {
+  campaign: Campaign
+  busy: boolean
+  onNext: (values: Partial<Campaign>) => void
+}) {
+  const [offer, setOffer] = useState(campaign.offer)
+  const [cta, setCta] = useState(campaign.cta || 'Book a FleetPilot demo')
+  const [duration, setDuration] = useState(campaign.duration_seconds || 30)
+  const [ratio, setRatio] = useState(campaign.aspect_ratio || '1:1')
+
+  return (
+    <BriefStep
+      eyebrow="03 · OFFER"
+      title="What is the operator being asked to do?"
+      help="Campaign parameters become authoritative downstream production controls."
+    >
+      <label htmlFor="offer">Core offer</label>
+      <textarea
+        id="offer"
+        aria-label="Core offer"
+        value={offer}
+        onChange={event => setOffer(event.target.value)}
+      />
+      <div className="form-grid">
+        <div>
+          <label htmlFor="cta">CTA</label>
+          <input
+            id="cta"
+            aria-label="CTA"
+            value={cta}
+            onChange={event => setCta(event.target.value)}
+          />
+        </div>
+        <div>
+          <label htmlFor="duration">Duration</label>
+          <input
+            id="duration"
+            aria-label="Duration"
+            type="number"
+            min={8}
+            max={600}
+            value={duration}
+            onChange={event => setDuration(Number(event.target.value))}
+          />
+        </div>
+        <div>
+          <label htmlFor="ratio">Aspect ratio</label>
+          <select
+            id="ratio"
+            aria-label="Aspect ratio"
+            value={ratio}
+            onChange={event => setRatio(event.target.value)}
+          >
+            <option>16:9</option>
+            <option>9:16</option>
+            <option>1:1</option>
+          </select>
+        </div>
+      </div>
+      <StepFooter>
+        <button
+          className="primary"
+          disabled={busy}
+          onClick={() =>
+            onNext({
+              offer,
+              cta,
+              format: duration === 30 ? '30s Ad' : campaign.format,
+              duration_seconds: duration,
+              aspect_ratio: ratio,
+            })
+          }
+        >
+          Lock Offer & Production Controls →
+        </button>
+      </StepFooter>
+    </BriefStep>
+  )
+}
+
+function BriefStep({
+  eyebrow,
+  title,
+  help,
+  children,
+}: {
+  eyebrow: string
+  title: string
+  help: string
+  children: React.ReactNode
+}) {
+  return (
+    <section className="page focused-page">
+      <div className="eyebrow">{eyebrow}</div>
+      <h1>{title}</h1>
+      <p className="lede">{help}</p>
+      <div className="panel form-panel">{children}</div>
+    </section>
+  )
+}
+
+function StepFooter({ children }: { children: React.ReactNode }) {
+  return <div className="step-footer">{children}</div>
+}
+
+function BrandScreen({
+  campaign,
+  busy,
+  onContinue,
+}: {
+  campaign: Campaign
+  busy: boolean
+  onContinue: () => void
+}) {
+  const [brand, setBrand] = useState<Brand | null>(null)
+  useEffect(() => {
+    getBrand(campaign.id).then(response => setBrand(response.brand))
+  }, [campaign.id])
+  if (!brand) return <LoadingPage label="Loading Brand Brain…" />
+  const messaging = Array.isArray(brand.messaging_json)
+    ? brand.messaging_json
+    : []
+  return (
+    <section className="page">
+      <div className="eyebrow">04 · BRAND BRAIN</div>
+      <h1>Product truth is locked before production.</h1>
+      <div className="brand-layout">
+        <div className="panel">
+          <small>BRAND</small>
+          <h2>{brand.name}</h2>
+          <p>{brand.positioning}</p>
+          <div className="fact-grid">
+            <Fact label="Audience" value={brand.audience} />
+            <Fact label="Promise" value={brand.core_promise} />
+            <Fact label="Tagline" value={brand.tagline} />
+            <Fact label="UI protection" value={brand.default_immutable_ui ? 'LOCKED' : 'OFF'} good />
+          </div>
+          <div className="chips">
+            {messaging.map(item => <span key={item}>{item}</span>)}
+          </div>
+        </div>
+        <aside className="panel guard-card">
+          <div className="ai-status">● AUTHORITATIVE BRAND PROFILE</div>
+          <h2>Generation guardrails active</h2>
+          <p>No unsupported FleetPilot claims, regenerated product UI, or invented metrics.</p>
+          <button className="primary wide" disabled={busy} onClick={onContinue}>
+            Continue to Creative Director →
+          </button>
+        </aside>
+      </div>
+    </section>
+  )
+}
+
+function Fact({
+  label,
+  value,
+  good = false,
+}: {
+  label: string
+  value: string
+  good?: boolean
+}) {
+  return (
+    <div className="fact">
+      <small>{label}</small>
+      <b className={good ? 'good' : ''}>{value}</b>
     </div>
-    <aside className="intel-panel"><div className="ai-status">● BRAND MEMORY READY</div><h2>{brand.name}</h2><div className="strategy-block"><small>COMPLETENESS</small><b>Core identity configured</b></div><div className="strategy-block"><small>PROTECTION</small><p>{brand.immutable?'Approved UI defaults to immutable.':'UI protection is disabled.'}</p></div><div className="strategy-block"><small>APPROVED ASSETS</small><p>{brand.uiFolders?'Local folder reference configured.':'Add a local approved UI folder.'}</p></div><button className="ghost wide" onClick={createNew}>New Brand</button><button className="primary wide" onClick={save}>Save Brand Brain</button>{saved && <p className="save-confirm">Saved locally</p>}</aside>
-  </section>
+  )
+}
+
+function DirectorScreen({
+  campaign,
+  busy,
+  onCampaign,
+  onContinue,
+  run,
+}: {
+  campaign: Campaign
+  busy: boolean
+  onCampaign: (campaign: Campaign) => void
+  onContinue: () => void
+  run: (action: () => Promise<void>) => Promise<void>
+}) {
+  const [plan, setPlan] = useState<DirectorPlan | null>(null)
+  useEffect(() => {
+    getDirector(campaign.id).then(response => setPlan(response.plan))
+  }, [campaign.id])
+
+  const generate = () =>
+    void run(async () => {
+      const response = await generateDirector(campaign.id)
+      setPlan(response.plan)
+    })
+
+  const approve = () =>
+    void run(async () => {
+      const response = await approveDirector(campaign.id)
+      setPlan(response.plan)
+      const latest = await getCampaign(campaign.id)
+      onCampaign(latest.campaign)
+      onContinue()
+    })
+
+  return (
+    <section className="page director-grid">
+      <div>
+        <div className="eyebrow">05 · CREATIVE DIRECTOR</div>
+        <h1>Turn the authoritative brief into a production plan.</h1>
+        <div className="parameter-strip">
+          <Fact label="Duration" value={`${campaign.duration_seconds}s`} good />
+          <Fact label="Aspect" value={campaign.aspect_ratio} good />
+          <Fact label="Format" value={campaign.format} />
+          <Fact label="CTA" value={campaign.cta} />
+        </div>
+        <div className="panel">
+          <small>OBJECTIVE</small>
+          <p>{campaign.objective}</p>
+          <small>AUDIENCE</small>
+          <p>{campaign.audience}</p>
+          <small>OFFER</small>
+          <p>{campaign.offer}</p>
+        </div>
+        {plan && (
+          <div className="panel director-output">
+            <h2>{String(plan.output_json.strategy.campaign_angle || 'Product truth first')}</h2>
+            <p className="hook">{plan.output_json.hooks[0]}</p>
+            <div className="scene-summary">
+              {plan.output_json.scene_plan.map(scene => (
+                <span key={scene.scene_number}>
+                  {scene.scene_number}. {scene.title} · {scene.duration_seconds}s
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+      <aside className="intel-panel">
+        <div className="ai-status">● MOCK DIRECTOR · BACKEND</div>
+        <h2>{plan ? `Proposal V${plan.version}` : 'Ready to generate'}</h2>
+        {plan && (
+          <>
+            <Fact label="Status" value={plan.status} good={plan.status === 'APPROVED'} />
+            <Fact
+              label="Planned duration"
+              value={`${plan.output_json.scene_plan.reduce((sum, scene) => sum + scene.duration_seconds, 0)}s`}
+              good
+            />
+            <Fact label="Output ratio" value={campaign.aspect_ratio} good />
+          </>
+        )}
+        <button className="ghost wide" disabled={busy} onClick={generate}>
+          {plan ? 'Regenerate Direction' : 'Generate Direction'}
+        </button>
+        <button className="primary wide" disabled={busy || !plan} onClick={approve}>
+          Approve Plan & Continue →
+        </button>
+      </aside>
+    </section>
+  )
+}
+
+function ScriptScreen({
+  campaign,
+  busy,
+  onContinue,
+}: {
+  campaign: Campaign
+  busy: boolean
+  onContinue: () => void
+}) {
+  const [plan, setPlan] = useState<DirectorPlan | null>(null)
+  useEffect(() => {
+    getDirector(campaign.id).then(response => setPlan(response.plan))
+  }, [campaign.id])
+  if (!plan) return <LoadingPage label="Loading script…" />
+  return (
+    <section className="page">
+      <div className="eyebrow">06 · SCRIPT</div>
+      <h1>Scene-linked script</h1>
+      <p className="lede">
+        {campaign.duration_seconds}s · {campaign.aspect_ratio} · {campaign.cta}
+      </p>
+      <div className="script-list">
+        {plan.output_json.script.map(line => (
+          <article className="panel script-line" key={line.scene_number}>
+            <span>{String(line.scene_number).padStart(2, '0')} · {line.timing_seconds}s</span>
+            <h3>{line.on_screen_copy}</h3>
+            <p>{line.voiceover}</p>
+          </article>
+        ))}
+      </div>
+      <StepFooter>
+        <button className="primary" disabled={busy} onClick={onContinue}>
+          Continue to Storyboard →
+        </button>
+      </StepFooter>
+    </section>
+  )
+}
+
+function StoryboardScreen({
+  campaign,
+  busy,
+  onContinue,
+}: {
+  campaign: Campaign
+  busy: boolean
+  onContinue: () => void
+}) {
+  const [data, setData] = useState<StoryboardData | null>(null)
+  useEffect(() => {
+    getStoryboard(campaign.id).then(setData)
+  }, [campaign.id])
+  if (!data?.storyboard) return <LoadingPage label="Loading storyboard…" />
+  return (
+    <section className="page storyboard-page">
+      <div className="story-head">
+        <div>
+          <div className="eyebrow">07 · STORYBOARD</div>
+          <h1>{data.storyboard.title}</h1>
+          <p>{data.duration_seconds}s total · {data.aspect_ratio} · {data.scenes.length} scenes</p>
+        </div>
+        <button className="primary" disabled={busy} onClick={onContinue}>
+          Build Asset Plan →
+        </button>
+      </div>
+      <div className="scene-strip">
+        {data.scenes.map(scene => (
+          <article className="scene-card" key={scene.id}>
+            <div className="scene-preview" />
+            <small>SCENE {String(scene.position).padStart(2, '0')} · {scene.duration_seconds}s</small>
+            <b>{scene.title}</b>
+            <span className={scene.scene_type === 'REAL_UI' ? 'real' : 'ai'}>
+              {scene.scene_type}
+            </span>
+            <small>{scene.generation_method}</small>
+          </article>
+        ))}
+      </div>
+      <div className="panel inspector-wide">
+        <Fact label="Campaign duration" value={`${campaign.duration_seconds}s`} good />
+        <Fact label="Storyboard duration" value={`${data.duration_seconds}s`} good={data.duration_seconds === campaign.duration_seconds} />
+        <Fact label="Output aspect ratio" value={data.aspect_ratio} good={data.aspect_ratio === campaign.aspect_ratio} />
+        <Fact label="Publishing" value="Not authorized" />
+      </div>
+    </section>
+  )
+}
+
+function AssetPlanScreen({
+  campaign,
+  busy,
+  onCampaign,
+  onContinue,
+}: {
+  campaign: Campaign
+  busy: boolean
+  onCampaign: (campaign: Campaign) => void
+  onContinue: () => void
+}) {
+  const [plan, setPlan] = useState<AssetPlan | null>(null)
+  const [loadError, setLoadError] = useState('')
+  useEffect(() => {
+    getAssetPlan(campaign.id)
+      .then(async response => {
+        setPlan(response)
+        const latest = await getCampaign(campaign.id)
+        onCampaign(latest.campaign)
+      })
+      .catch(err => setLoadError(err instanceof Error ? err.message : String(err)))
+  }, [campaign.id, onCampaign])
+  if (loadError) return <ErrorPage message={loadError} />
+  if (!plan) return <LoadingPage label="Building campaign Asset Plan…" />
+  return (
+    <section className="page">
+      <div className="eyebrow">08 · ASSET PLAN</div>
+      <h1>Know exactly what exists and what must be generated.</h1>
+      <p className="lede">{campaign.duration_seconds}s · {campaign.aspect_ratio} · {plan.quantity} planned asset dependencies</p>
+      <div className="asset-grid">
+        {plan.items.map((item, index) => (
+          <article className="panel asset-card" key={`${item.kind}-${index}`}>
+            <span className="asset-kind">{item.kind}</span>
+            <h3>{item.purpose}</h3>
+            <Fact label="Status" value={item.status} good={item.status === 'EXISTING'} />
+            <Fact label="Provider" value={item.provider} />
+            <Fact label="Model" value={item.model || 'N/A'} />
+            <Fact label="Format" value={`${item.format} · ${item.aspect_ratio}`} />
+            <Fact label="Quantity" value={String(item.quantity)} />
+          </article>
+        ))}
+      </div>
+      <StepFooter>
+        <button className="primary" disabled={busy} onClick={onContinue}>
+          Continue to Generation Request →
+        </button>
+      </StepFooter>
+    </section>
+  )
+}
+
+function GenerationScreen({
+  campaign,
+  busy,
+  onCampaign,
+  onReview,
+}: {
+  campaign: Campaign
+  busy: boolean
+  onCampaign: (campaign: Campaign) => void
+  onReview: () => void
+}) {
+  const [request, setRequest] = useState<GenerationRequest | null>(null)
+  const [localError, setLocalError] = useState('')
+  useEffect(() => {
+    getGenerationRequest(campaign.id)
+      .then(response => setRequest(response.generation_request))
+      .catch(() => {})
+  }, [campaign.id])
+
+  const create = async () => {
+    setLocalError('')
+    try {
+      const response = await createGenerationRequest(campaign.id)
+      setRequest(response.generation_request)
+      const latest = await getCampaign(campaign.id)
+      onCampaign(latest.campaign)
+    } catch (err) {
+      setLocalError(err instanceof Error ? err.message : String(err))
+    }
+  }
+
+  return (
+    <section className="page generation-page">
+      <div className="eyebrow">09 · GENERATION REQUEST</div>
+      <h1>Cost is visible before any provider submission.</h1>
+      <p className="lede">
+        This screen can create and cost a request. It cannot approve, reserve, queue, or submit it.
+      </p>
+      {!request && (
+        <div className="panel gate-card">
+          <h2>Ready to create governed request</h2>
+          <p>One FleetPilot Meta image · {campaign.duration_seconds}s campaign · {campaign.aspect_ratio}</p>
+          <button className="primary" disabled={busy} onClick={() => void create()}>
+            Create Generation Request
+          </button>
+        </div>
+      )}
+      {localError && <div className="error-banner">{localError}</div>}
+      {request && (
+        <div className="generation-grid">
+          <div className="panel request-card">
+            <div className="request-header">
+              <div>
+                <small>REQUEST</small>
+                <h2>{request.provider} / {request.model}</h2>
+              </div>
+              <span className="status-pill">{request.lifecycle_state}</span>
+            </div>
+            <div className="fact-grid">
+              <Fact label="Quantity" value={String(request.quantity)} />
+              <Fact label="Estimated cost" value={request.estimated_cost} good />
+              <Fact label="Campaign duration" value={`${request.campaign_duration_seconds}s`} good />
+              <Fact label="Output ratio" value={request.aspect_ratio} good />
+            </div>
+          </div>
+          <aside className="panel approval-card">
+            <div className="approval-icon">⛔</div>
+            <small>APPROVAL STATE</small>
+            <h2>{request.approval_state}</h2>
+            <p>
+              Provider submission is disabled until a separate explicit cost approval occurs.
+            </p>
+            <div className="zero-grid">
+              <Fact label="Provider submissions" value={String(request.provider_submissions)} good />
+              <Fact label="Generation attempts" value={String(request.generation_attempts)} good />
+              <Fact label="Reservations" value={String(request.budget_reservations)} good />
+              <Fact label="Spend events" value={String(request.spend_events)} good />
+            </div>
+            <b className="zero-spend">Actual spend · USD 0.00</b>
+          </aside>
+        </div>
+      )}
+      {request && (
+        <StepFooter>
+          <button className="ghost" onClick={() => void create()}>
+            Re-open same idempotent request
+          </button>
+          <button className="primary" onClick={onReview}>
+            Inspect Downstream Governance →
+          </button>
+        </StepFooter>
+      )}
+    </section>
+  )
+}
+
+function GovernanceScreen({ campaign }: { campaign: Campaign }) {
+  const [governance, setGovernance] = useState<Governance | null>(null)
+  useEffect(() => {
+    getGovernance(campaign.id).then(response => setGovernance(response.governance))
+  }, [campaign.id])
+  if (!governance) return <LoadingPage label="Loading governance state…" />
+  const items = [
+    ['Automated QA', governance.automated_qa, 'System checks are independent of human acceptance.'],
+    ['Provenance', governance.provenance, 'Provider/model/output lineage appears only after generation.'],
+    ['Human Review', governance.human_review, 'A human decision is required after automated QA.'],
+    ['Export', governance.export, 'Export cannot become available before required reviews pass.'],
+    ['Publishing', governance.publishing, 'CreativeOS never auto-publishes from this flow.'],
+  ]
+  return (
+    <section className="page">
+      <div className="eyebrow">10 · GOVERNANCE</div>
+      <h1>QA ≠ Human Review ≠ Export ≠ Publishing</h1>
+      <p className="lede">
+        Downstream state is explicit even before generation begins.
+      </p>
+      <div className="governance-grid">
+        {items.map(([label, value, note]) => (
+          <article className="panel governance-card" key={label}>
+            <small>{label}</small>
+            <h2>{value}</h2>
+            <p>{note}</p>
+          </article>
+        ))}
+      </div>
+      <div className="panel guard-banner">
+        <b>Automatic publishing: {governance.auto_publish ? 'ENABLED' : 'DISABLED'}</b>
+      </div>
+    </section>
+  )
+}
+
+function LoadingPage({ label }: { label: string }) {
+  return <section className="page"><div className="loading-card">{label}</div></section>
+}
+
+function ErrorPage({ message }: { message: string }) {
+  return <section className="page"><div className="error-banner">{message}</div></section>
 }
 
 export default App
