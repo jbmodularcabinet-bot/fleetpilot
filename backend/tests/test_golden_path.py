@@ -1,8 +1,7 @@
 import hashlib
 import json
-import os
-import shutil
 import subprocess
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -17,15 +16,13 @@ from creativeos_db.qa import QAService, REQUIRED_CHECKS
 from creativeos_db.queue import GenerationQueueService, GenerationWorker
 from creativeos_db.router import default_router
 from creativeos_db.voice import VoiceService
+from tests.repro_fixtures import COMMITTED_HERO_SHA256, copy_committed_hero
 
 
 REPO = Path(__file__).resolve().parents[2]
 BACKEND = REPO / "backend"
-PROOF_ROOT = BACKEND / "generated" / "batch11-golden-path"
-PROOF_DB = PROOF_ROOT / "proof.sqlite3"
-PROOF_SUMMARY = PROOF_ROOT / "proof_summary.json"
 
-PROTECTED_HASHES = {
+HISTORICAL_PROOF_HASHES = {
     BACKEND / "generated" / "batch9-proof" / "proof.sqlite3":
         "62899dbd0f6d352bcfcaa86b5b021b2ef72528ba9f3746a1cdefa07ed4de1025",
     BACKEND / "generated" / "batch9-proof" / "proof_summary.json":
@@ -65,28 +62,24 @@ def sha256(path: Path) -> str:
     return h.hexdigest()
 
 
-def protected_hashes() -> dict[str, str]:
-    return {str(path): sha256(path) for path in PROTECTED_HASHES}
-
-
-def assert_protected_baseline(test: unittest.TestCase) -> None:
-    observed = protected_hashes()
-    expected = {str(path): digest for path, digest in PROTECTED_HASHES.items()}
+def historical_proof_status(test: unittest.TestCase) -> dict[str, object]:
+    present = {path: path.is_file() for path in HISTORICAL_PROOF_HASHES}
+    if not any(present.values()):
+        return {"status": "UNAVAILABLE", "hashes": {}}
+    test.assertTrue(
+        all(present.values()),
+        "historical Batch 9/10 proof evidence must be complete when present",
+    )
+    observed = {
+        str(path): sha256(path)
+        for path in HISTORICAL_PROOF_HASHES
+    }
+    expected = {
+        str(path): digest
+        for path, digest in HISTORICAL_PROOF_HASHES.items()
+    }
     test.assertEqual(observed, expected)
-
-
-def _candidate_fleetpilot_images() -> list[Path]:
-    suffixes = {".png", ".jpg", ".jpeg", ".webp"}
-    candidates = []
-    for path in REPO.rglob("*"):
-        if not path.is_file() or path.suffix.lower() not in suffixes:
-            continue
-        normalized = str(path).lower()
-        if "batch9-proof" in normalized or "batch10-proof" in normalized or "batch11-golden-path" in normalized:
-            continue
-        if "fleetpilot" in normalized or "fleet-pilot" in normalized or "fleet_pilot" in normalized:
-            candidates.append(path.resolve())
-    return sorted(candidates, key=lambda x: str(x).lower())
+    return {"status": "VERIFIED", "hashes": observed}
 
 
 def _probe_image(ffprobe: Path, path: Path) -> tuple[int, int] | None:
@@ -101,67 +94,27 @@ def _probe_image(ffprobe: Path, path: Path) -> tuple[int, int] | None:
     streams = data.get("streams") or []
     if not streams:
         return None
-    width = int(streams[0].get("width") or 0)
-    height = int(streams[0].get("height") or 0)
-    return width, height
+    return int(streams[0].get("width") or 0), int(streams[0].get("height") or 0)
 
 
-def create_proof_card(path: Path) -> dict[str, str | int | None]:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    env = dict(os.environ)
-    env["CREATIVEOS_PROOF_CARD"] = str(path)
-    script = r"""
-Add-Type -AssemblyName System.Drawing
-$p = $env:CREATIVEOS_PROOF_CARD
-$bmp = New-Object System.Drawing.Bitmap 640,360
-$g = [System.Drawing.Graphics]::FromImage($bmp)
-$g.Clear([System.Drawing.Color]::FromArgb(15,23,42))
-$white = [System.Drawing.Brushes]::White
-$muted = New-Object System.Drawing.SolidBrush ([System.Drawing.Color]::FromArgb(203,213,225))
-$f1 = New-Object System.Drawing.Font('Arial',34,[System.Drawing.FontStyle]::Bold)
-$f2 = New-Object System.Drawing.Font('Arial',20,[System.Drawing.FontStyle]::Regular)
-$f3 = New-Object System.Drawing.Font('Arial',14,[System.Drawing.FontStyle]::Regular)
-$g.DrawString('FleetPilot',$f1,$white,40,70)
-$g.DrawString('Know every trip. Know every cost.',$f2,$white,40,145)
-$g.DrawString('Batch 11 Integration Proof',$f3,$muted,40,210)
-$bmp.Save($p,[System.Drawing.Imaging.ImageFormat]::Png)
-$f1.Dispose(); $f2.Dispose(); $f3.Dispose(); $muted.Dispose(); $g.Dispose(); $bmp.Dispose()
-"""
-    result = subprocess.run(
-        ["powershell.exe", "-NoProfile", "-Command", script],
-        capture_output=True, text=True, timeout=30, shell=False, env=env,
-    )
-    if result.returncode != 0:
-        raise RuntimeError(result.stderr or result.stdout or "proof card generation failed")
+def resolve_composition_visual(
+    ffprobe: Path, proof_root: Path
+) -> dict[str, str | int | None]:
+    path = copy_committed_hero(REPO, proof_root)
+    dims = _probe_image(ffprobe, path)
+    if not dims:
+        raise RuntimeError("committed hero.png is not readable by ffprobe")
     return {
-        "source_type": "CONTROLLED_PROOF_CARD",
-        "fixture_id": "FLEETPILOT_PROOF_CARD_V1",
-        "path": str(path.resolve()),
-        "sha256": sha256(path),
-        "width": 640,
-        "height": 360,
-        "creation_method": "Windows System.Drawing / Arial",
+        "source_type": "COMMITTED_TEST_ASSET",
+        "fixture_id": "HERO_PNG_SHA256_V1",
+        "path": str(path),
+        "sha256": COMMITTED_HERO_SHA256,
+        "width": dims[0],
+        "height": dims[1],
+        "creation_method": "copy of tracked app/src/assets/hero.png",
         "logo_path": None,
         "logo_sha256": None,
     }
-
-
-def resolve_composition_visual(ffprobe: Path) -> dict[str, str | int | None]:
-    for path in _candidate_fleetpilot_images():
-        dims = _probe_image(ffprobe, path)
-        if dims and dims[0] >= 640 and dims[1] >= 360:
-            return {
-                "source_type": "EXISTING_FLEETPILOT_ASSET",
-                "fixture_id": None,
-                "path": str(path),
-                "sha256": sha256(path),
-                "width": dims[0],
-                "height": dims[1],
-                "creation_method": "existing repository asset",
-                "logo_path": None,
-                "logo_sha256": None,
-            }
-    return create_proof_card(PROOF_ROOT / "fixture" / "fleetpilot-proof-card-v1.png")
 
 
 def golden_brief(brand_id: str) -> CampaignBrief:
@@ -189,23 +142,23 @@ def golden_brief(brand_id: str) -> CampaignBrief:
 
 class Batch11GoldenPathTests(unittest.TestCase):
     def setUp(self):
-        assert_protected_baseline(self)
+        self.tmp = tempfile.TemporaryDirectory()
+        self.proof_root = Path(self.tmp.name).resolve()
+        self.proof_db = self.proof_root / "proof.sqlite3"
+        self.proof_summary = self.proof_root / "proof_summary.json"
+        self.historical_proof = historical_proof_status(self)
+
+    def tearDown(self):
+        self.tmp.cleanup()
 
     def test_fleetpilot_golden_path(self):
-        if PROOF_ROOT.exists():
-            for child in list(PROOF_ROOT.iterdir()):
-                if child.is_dir():
-                    shutil.rmtree(child)
-                else:
-                    child.unlink()
-        PROOF_ROOT.mkdir(parents=True, exist_ok=True)
-
         ffmpeg, ffprobe = discover_media_tools()
-        visual = resolve_composition_visual(ffprobe)
+        visual = resolve_composition_visual(ffprobe, self.proof_root)
         visual_path = Path(str(visual["path"]))
         visual_before = sha256(visual_path)
+        self.assertEqual(visual_before, COMMITTED_HERO_SHA256)
 
-        store = CreativeOSStore(PROOF_DB)
+        store = CreativeOSStore(self.proof_db)
         self.assertEqual(store.migrate_to_latest(), 10)
         try:
             brand = BrandBrainService(store).load_fleetpilot_fixture()
@@ -292,7 +245,7 @@ class Batch11GoldenPathTests(unittest.TestCase):
             self.assertTrue(str(generated_asset["output_path"]).startswith("mock://"))
             self.assertNotEqual(str(generated_asset["output_path"]), str(visual_path))
 
-            voice_service = VoiceService(store, PROOF_ROOT / "voice")
+            voice_service = VoiceService(store, self.proof_root / "voice")
             voice_job = voice_service.create_job(
                 scene["id"], FIXTURE["voice_text"], "en", "mock-ainsley", gen_job["id"]
             )
@@ -300,7 +253,7 @@ class Batch11GoldenPathTests(unittest.TestCase):
             self.assertEqual(voice["status"], "SUCCEEDED")
 
             composition = CompositionService(
-                store, REPO, PROOF_ROOT, ffmpeg, ffprobe
+                store, self.proof_root, self.proof_root, ffmpeg, ffprobe
             )
             timeline_created = composition.create_timeline(
                 campaign["id"], board["id"], [{
@@ -414,9 +367,11 @@ class Batch11GoldenPathTests(unittest.TestCase):
                 ],
                 "review_state": review["review_state"],
                 "review_note": review["reviewer_note"],
-                "protected_hashes": protected_hashes(),
+                "historical_proof": self.historical_proof,
             }
-            PROOF_SUMMARY.write_text(json.dumps(summary, indent=2, sort_keys=True), encoding="utf-8")
+            self.proof_summary.write_text(
+                json.dumps(summary, indent=2, sort_keys=True), encoding="utf-8"
+            )
             proof_ids = {
                 "brand": brand["id"],
                 "campaign": campaign["id"],
@@ -435,7 +390,7 @@ class Batch11GoldenPathTests(unittest.TestCase):
         finally:
             store.close()
 
-        reopened = CreativeOSStore(PROOF_DB)
+        reopened = CreativeOSStore(self.proof_db)
         try:
             self.assertEqual(reopened.schema_version(), 10)
             self.assertEqual(reopened.get("brand_profiles", proof_ids["brand"])["id"], proof_ids["brand"])
@@ -451,8 +406,8 @@ class Batch11GoldenPathTests(unittest.TestCase):
             reopened.close()
 
         self.assertEqual(sha256(visual_path), visual_before)
-        assert_protected_baseline(self)
-        self.assertTrue(PROOF_SUMMARY.is_file())
+        self.assertEqual(historical_proof_status(self), self.historical_proof)
+        self.assertTrue(self.proof_summary.is_file())
 
 
 if __name__ == "__main__":

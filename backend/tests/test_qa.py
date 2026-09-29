@@ -18,6 +18,7 @@ from creativeos_db.migrations import MIGRATIONS
 from creativeos_db.qa import QAEngineError, QAService, REQUIRED_CHECKS, derive_overall
 from creativeos_db.queue import GenerationQueueService
 from creativeos_db.router import default_router
+from tests.repro_fixtures import build_render_fixture
 
 
 def sha256_file(path: Path) -> str:
@@ -38,13 +39,24 @@ class Batch10QATests(unittest.TestCase):
         "render_jobs", "render_attempts",
     )
 
+    @classmethod
+    def setUpClass(cls):
+        cls.fixture_tmp = tempfile.TemporaryDirectory()
+        cls.fixture_root = Path(cls.fixture_tmp.name).resolve()
+        cls.fixture_repo = Path(__file__).resolve().parents[2]
+        cls.proof_source, cls.fixture_render = build_render_fixture(
+            cls.fixture_root, cls.fixture_repo
+        )
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.fixture_tmp.cleanup()
+
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
         self.root = Path(self.tmp.name)
         self.db = self.root / "qa.sqlite3"
         self.repo = Path(__file__).resolve().parents[2]
-        self.proof_source = self.repo / "backend" / "generated" / "batch9-proof" / "proof.sqlite3"
-        self.assertTrue(self.proof_source.is_file())
 
     def tearDown(self):
         self.tmp.cleanup()
