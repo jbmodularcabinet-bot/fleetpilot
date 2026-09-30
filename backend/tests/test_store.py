@@ -11,7 +11,7 @@ class StoreTestCase(unittest.TestCase):
         self.tmp = tempfile.TemporaryDirectory()
         self.db_path = Path(self.tmp.name) / "creativeos.sqlite3"
         self.store = CreativeOSStore(self.db_path)
-        self.assertEqual(self.store.migrate_to_latest(), 10)
+        self.assertEqual(self.store.migrate_to_latest(), 11)
 
     def tearDown(self) -> None:
         self.store.close()
@@ -25,10 +25,10 @@ class StoreTestCase(unittest.TestCase):
         return {"brand": brand, "campaign": campaign, "board": board, "scene": scene}
 
     def test_forward_rollback_reapply(self) -> None:
-        self.assertEqual(self.store.schema_version(), 10)
+        self.assertEqual(self.store.schema_version(), 11)
         self.assertEqual(self.store.rollback_to(0), 0)
         self.assertEqual(self.store.schema_version(), 0)
-        self.assertEqual(self.store.migrate_to_latest(), 10)
+        self.assertEqual(self.store.migrate_to_latest(), 11)
         tables = {row[0] for row in self.store.conn.execute("SELECT name FROM sqlite_master WHERE type='table'")}
         for name in {"brand_profiles", "campaigns", "storyboards", "scenes", "assets", "generation_jobs", "qa_results", "export_jobs", "creative_memory", "asset_requirements", "generated_assets"}:
             self.assertIn(name, tables)
@@ -56,7 +56,7 @@ class StoreTestCase(unittest.TestCase):
         brand_id = graph["brand"]["id"]
         self.store.close()
         self.store = CreativeOSStore(self.db_path)
-        self.assertEqual(self.store.schema_version(), 10)
+        self.assertEqual(self.store.schema_version(), 11)
         self.assertEqual(self.store.get("brand_profiles", brand_id)["name"], "Test Brand")
 
     def test_delete_and_cascade(self) -> None:

@@ -30,7 +30,7 @@ class Batch7QueueTests(unittest.TestCase):
         self.tmp = tempfile.TemporaryDirectory()
         self.db = Path(self.tmp.name) / "creativeos.sqlite3"
         self.store = CreativeOSStore(self.db)
-        self.assertEqual(self.store.migrate_to_latest(), 10)
+        self.assertEqual(self.store.migrate_to_latest(), 11)
         brand = BrandBrainService(self.store).load_fleetpilot_fixture()
         campaign = self.store.create("campaigns", {"brand_profile_id": brand["id"], "title": "Queue"})
         board = self.store.create("storyboards", {"campaign_id": campaign["id"], "title": "Queue"})
@@ -53,7 +53,7 @@ class Batch7QueueTests(unittest.TestCase):
         job_id = job["id"]
         self.assertEqual(self.store.rollback_to(5), 5)
         self.assertEqual(self.store.get("generation_jobs", job_id)["id"], job_id)
-        self.assertEqual(self.store.migrate_to_latest(), 10)
+        self.assertEqual(self.store.migrate_to_latest(), 11)
         self.assertEqual(self.store.get("generation_jobs", job_id)["id"], job_id)
 
     def test_router_capabilities_disabled_live_and_immutable_ui(self):

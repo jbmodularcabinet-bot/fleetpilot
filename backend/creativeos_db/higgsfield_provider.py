@@ -5,7 +5,6 @@ import os
 import socket
 import time
 import urllib.error
-from dataclasses import dataclass
 
 import httpx
 from typing import Any, Callable
@@ -17,38 +16,12 @@ RETRYABLE_SUBMIT_HTTP = {423, 500, 503}
 RETRYABLE_POLL_HTTP = {500, 502, 503, 504}
 
 
-class HiggsfieldProviderError(RuntimeError):
-    def __init__(
-        self,
-        message: str,
-        *,
-        code: str,
-        retryable: bool = False,
-        submit_uncertain: bool = False,
-        status_code: int | None = None,
-    ):
-        super().__init__(message)
-        self.code = code
-        self.retryable = bool(retryable)
-        self.submit_uncertain = bool(submit_uncertain)
-        self.status_code = status_code
-
-
-@dataclass(frozen=True)
-class HiggsfieldSubmission:
-    request_id: str
-    status: str
-    status_url: str
-    cancel_url: str | None
-    raw: dict[str, Any]
-
-
-@dataclass(frozen=True)
-class HiggsfieldTerminalResult:
-    request_id: str
-    status: str
-    output_url: str
-    raw: dict[str, Any]
+# Compatibility names for existing adapter clients.
+from .provider_contract import (
+    ProviderError as HiggsfieldProviderError,
+    ProviderSubmission as HiggsfieldSubmission,
+    ProviderResult as HiggsfieldTerminalResult,
+)
 
 
 Transport = Callable[

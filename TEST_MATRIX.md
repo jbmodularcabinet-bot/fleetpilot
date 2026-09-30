@@ -12,10 +12,11 @@
 | Cost optimizer | covered | currency + FX + budget + persistence | regression only | PASS — Batch 8 |
 | Voice/FFmpeg | 7 targeted | voice + timeline + render + ffprobe | proof render | PASS — Batch 9 |
 | Deterministic QA | 23 targeted | lifecycle + idempotency + manifest + rollback | backend-only | PASS — Batch 10 |
-| FleetPilot golden path | n/a | pending | pending | Batch 11 |
+| FleetPilot golden path | n/a | deterministic portable fixture | real FFmpeg + QA | PASS |
+| Multi-brand foundation | 24 isolation/foundation tests | scoped generation to export | existing UI regression | PASS |
 | SmartRoom/JB regression | n/a | pending | pending | Batch 12 |
 | Windows package | n/a | pending | pending | Batch 13 |
 | Release candidate | cumulative | cumulative | cumulative | Batch 14 |
 
-Current cumulative verification: 75 backend tests + 10 frontend/UI tests, all passing.
+Current cumulative verification (2026-09-30): 108 backend tests + 10 frontend/UI tests, all passing. Frontend lint and production build pass. Multi-brand proof uses a local test provider, real FFmpeg rendering, all 11 QA checks, human review, and export.
 Batch 10 verifies v8↔v9 rollback/reapply, protected Batch 0–9 evidence preservation, concurrent create idempotency, retry lineage, lifecycle terminality, manifest integrity, atomic finalization, critical negative fixtures, proof-render PASS, human review independence, restart persistence, and no render-side effects.

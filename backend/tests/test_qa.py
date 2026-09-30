@@ -65,7 +65,7 @@ class Batch10QATests(unittest.TestCase):
         path = self.root / f"proof-{len(list(self.root.glob('proof-*.sqlite3')))}.sqlite3"
         shutil.copy2(self.proof_source, path)
         store = CreativeOSStore(path)
-        self.assertEqual(store.migrate_to_latest(), 10)
+        self.assertEqual(store.migrate_to_latest(), 11)
         render = store.conn.execute(
             "SELECT * FROM render_jobs WHERE status='SUCCEEDED' ORDER BY created_at LIMIT 1"
         ).fetchone()
@@ -228,8 +228,14 @@ class Batch10QATests(unittest.TestCase):
             self.assertEqual(store.foreign_key_violations(), [])
             self.assertEqual(store.get("render_jobs", ids["render_jobs"])["render_identity"], "r" * 64)
 
-            self.assertEqual(store.migrate_to_latest(), 10)
-            self.assertEqual(self._snapshot(store, ids), baseline)
+            self.assertEqual(store.migrate_to_latest(), 11)
+            migrated = self._snapshot(store, ids)
+            for table, expected_row in baseline["rows"].items():
+                self.assertEqual(
+                    {key: migrated["rows"][table][key] for key in expected_row},
+                    expected_row,
+                )
+                self.assertEqual(migrated["counts"][table], baseline["counts"][table])
             self.assertEqual(store.foreign_key_violations(), [])
             qa2 = store.create("qa_runs", {
                 "render_job_id": ids["render_jobs"], "render_identity_snapshot": "r" * 64,

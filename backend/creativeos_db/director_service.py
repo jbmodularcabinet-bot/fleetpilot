@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 from typing import Any
 
+from .brand_service import BrandBrainService
 from .director import CampaignBrief, CreativeDirectorProvider, brief_to_dict, validate_output
 from .store import CreativeOSStore, now_iso
 
@@ -13,7 +14,14 @@ class CreativeDirectorService:
         self.provider = provider
 
     def generate_plan(self, campaign_id: str, brief: CampaignBrief, brand: dict[str, Any]) -> dict[str, Any]:
-        self.store.get("campaigns", campaign_id)
+        campaign = self.store.get("campaigns", campaign_id)
+        expected_brand_id = campaign["brand_profile_id"]
+        if brief.brand_profile_id != expected_brand_id:
+            raise ValueError("campaign and brief Brand Brain do not match")
+        if brand.get("id") not in {None, expected_brand_id}:
+            raise ValueError("campaign resolved a different Brand Brain")
+        # Keep the legacy argument for callers, but never trust supplied brand content.
+        brand = BrandBrainService(self.store).get(expected_brand_id)
         output = self.provider.generate(brief, brand)
         validate_output(output)
         existing = self.store.list("director_plans", {"campaign_id": campaign_id})
@@ -26,6 +34,13 @@ class CreativeDirectorService:
             "brief_json": brief_to_dict(brief),
             "output_json": output,
         })
+
+    def generate_plan_for_campaign(
+        self, campaign_id: str, brief: CampaignBrief
+    ) -> dict[str, Any]:
+        campaign = self.store.get("campaigns", campaign_id)
+        brand = BrandBrainService(self.store).get(campaign["brand_profile_id"])
+        return self.generate_plan(campaign_id, brief, brand)
 
     def approve_plan(self, plan_id: str) -> dict[str, Any]:
         plan = self.store.get("director_plans", plan_id)

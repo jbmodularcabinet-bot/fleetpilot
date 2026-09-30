@@ -1,5 +1,24 @@
 # Current State
 
+## Multi-brand foundation ? 2026-09-30
+
+Status: PASS for the local backend foundation.
+Baseline repository: master at c72c4548d9f7e3a3c04ff1061238bdefd11c0255, with unfinished multi-brand changes already staged.
+
+Schema v11 adds organizations, organization-owned brands/products and campaigns, ownership views and consistency/reassignment triggers. Existing legacy records retain NULL ownership and are excluded from scoped stores. Rollback refuses to discard organization data; migrations roll back atomically on failure.
+
+CreativeOSStore(db, organization_id=..., brand_profile_id=...) enforces scoped CRUD and list access. Queue claiming/recovery, QA retries and generation lifecycle entry points respect that scope. Director input resolves the persisted campaign Brand Brain. Release QA and exports require the same campaign. Provider execution uses a neutral contract; the Higgsfield adapter and old import names remain compatible.
+
+Final verification: 108 backend tests PASS (including 24 multi-brand/isolation tests); 10 frontend tests PASS; frontend lint 0 warnings/errors; TypeScript and production build PASS. Tests cover native organizations with multiple products, external organizations with independent brands, same-organization and cross-organization rejection, failed migration atomicity, legacy migration/rollback compatibility, and real FFmpeg -> 11-check QA -> human review -> export using a local test provider.
+
+No deployment, live provider calls or existing production/proof database migration. Existing untracked backend/main.py and patch scripts remain outside this commit.
+
+Limits: unscoped SQLite connections and raw connection access remain trusted administrative/internal interfaces, not authenticated tenant APIs. No hostile-code or filesystem isolation is claimed. The existing local UI has not gained organization/brand selection. Next phase: authenticated scope selection and UI wiring, plus a deliberate legacy-ownership adoption workflow.
+
+See MULTIBRAND_FOUNDATION.md for design, verification and the changed-file manifest.
+
+## Historical Batch 10 record
+
 Batch 0 — PASS.
 Batch 1 — PASS.
 Batch 2 — PASS.

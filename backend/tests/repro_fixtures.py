@@ -42,8 +42,8 @@ def build_render_fixture(root: Path, repo: Path) -> tuple[Path, dict]:
 
     store = CreativeOSStore(db)
     try:
-        if store.migrate_to_latest() != 10:
-            raise AssertionError("fixture schema migration did not reach v10")
+        if store.migrate_to_latest() != 11:
+            raise AssertionError("fixture schema migration did not reach v11")
         brand = BrandBrainService(store).load_fleetpilot_fixture()
         campaign = store.create(
             "campaigns",

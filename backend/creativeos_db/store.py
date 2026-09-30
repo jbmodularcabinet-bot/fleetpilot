@@ -8,10 +8,11 @@ from typing import Any
 from uuid import uuid4
 
 from .migrations import MIGRATIONS
+from .scope_schema import GLOBAL_TABLES, SCOPED_TABLES
 from .brand_brain import validate_brand_payload
 
 TABLES = {
-    "brand_profiles", "campaigns", "storyboards", "scenes", "assets",
+    "organizations", "brand_profiles", "campaigns", "storyboards", "scenes", "assets",
     "generation_jobs", "qa_results", "export_jobs", "creative_memory", "director_plans", "scene_versions",
     "asset_requirements", "generated_assets", "generation_queue",
     "provider_cost_profiles", "fx_snapshots", "cost_recommendations", "cost_estimates", "cost_overrides",
@@ -49,11 +50,45 @@ def now_iso() -> str:
 
 
 class CreativeOSStore:
-    def __init__(self, db_path: str | Path):
+    def __init__(self, db_path: str | Path, *, organization_id: str | None = None,
+                 brand_profile_id: str | None = None):
+        # Unscoped connections are trusted local/admin infrastructure, not user APIs.
+        if (organization_id is None) != (brand_profile_id is None):
+            raise ValueError("organization and brand scope must be supplied together")
+        self.scope = None if organization_id is None else (organization_id, brand_profile_id)
         self.db_path = str(db_path)
         self.conn = sqlite3.connect(self.db_path)
         self.conn.row_factory = sqlite3.Row
         self.conn.execute("PRAGMA foreign_keys=ON")
+        if self.scope is not None:
+            try:
+                self.get("brand_profiles", brand_profile_id)
+            except Exception:
+                self.conn.close()
+                raise
+
+    def scope_clause(self, table: str) -> tuple[str, tuple]:
+        self._columns(table)
+        if self.scope is None or table in GLOBAL_TABLES:
+            return "1=1", ()
+        if table == "organizations":
+            return "id=?", (self.scope[0],)
+        if table not in SCOPED_TABLES:
+            raise PermissionError("table has no ownership mapping")
+        return (f"id IN (SELECT id FROM v_scope_{table} WHERE organization_id=? AND brand_profile_id=?)",
+                self.scope)
+
+    def _assert_writable(self, table: str) -> None:
+        if self.scope is not None and table in GLOBAL_TABLES | {"organizations"}:
+            raise PermissionError("shared configuration requires an administrative connection")
+
+    def _migration_script(self, script: str) -> None:
+        try:
+            self.conn.executescript("BEGIN IMMEDIATE;\n" + script + "\nCOMMIT;")
+        except Exception:
+            self.conn.rollback()
+            raise
+
     def close(self) -> None:
         self.conn.close()
 
@@ -67,19 +102,24 @@ class CreativeOSStore:
         return int(row["v"])
 
     def migrate_to_latest(self) -> int:
+        if self.scope is not None:
+            raise PermissionError("schema changes require an administrative connection")
         current = self.schema_version()
         for version in sorted(MIGRATIONS):
             if version > current:
-                self.conn.executescript(MIGRATIONS[version][0])
-                self.conn.commit()
+                self._migration_script(MIGRATIONS[version][0])
         return self.schema_version()
 
     def rollback_to(self, target_version: int) -> int:
+        if self.scope is not None:
+            raise PermissionError("schema changes require an administrative connection")
         current = self.schema_version()
+        if current >= 11 and target_version < 11:
+            if self.conn.execute("SELECT 1 FROM organizations LIMIT 1").fetchone():
+                raise ValueError("rollback would discard organization ownership")
         for version in sorted(MIGRATIONS, reverse=True):
             if target_version < version <= current:
-                self.conn.executescript(MIGRATIONS[version][1])
-                self.conn.commit()
+                self._migration_script(MIGRATIONS[version][1])
         return self.schema_version()
 
     def _encode(self, table: str, values: dict[str, Any]) -> dict[str, Any]:
@@ -101,6 +141,7 @@ class CreativeOSStore:
         return {str(row["name"]) for row in rows}
 
     def create(self, table: str, values: dict[str, Any]) -> dict[str, Any]:
+        self._assert_writable(table)
         columns = self._columns(table)
         if table == "brand_profiles":
             values = validate_brand_payload(values)
@@ -117,15 +158,24 @@ class CreativeOSStore:
         keys = list(data)
         placeholders = ",".join("?" for _ in keys)
         sql = f"INSERT INTO {table} ({','.join(keys)}) VALUES ({placeholders})"
-        self.conn.execute(sql, [data[k] for k in keys])
-        self.conn.commit()
-        return self.get(table, data["id"])
+        try:
+            self.conn.execute(sql, [data[k] for k in keys])
+            result = self.get(table, data["id"])
+            self.conn.commit()
+            return result
+        except Exception:
+            self.conn.rollback()
+            raise
 
     def get(self, table: str, row_id: str) -> dict[str, Any]:
         self._columns(table)
         row = self.conn.execute(f"SELECT * FROM {table} WHERE id=?", (row_id,)).fetchone()
         if row is None:
             raise KeyError(f"{table}:{row_id}")
+        clause, params = self.scope_clause(table)
+        if not self.conn.execute(f"SELECT 1 FROM {table} WHERE id=? AND ({clause})",
+                                 (row_id, *params)).fetchone():
+            raise PermissionError("record is outside the active organization and brand")
         return dict(row)
 
     def list(self, table: str, where: dict[str, Any] | None = None) -> list[dict[str, Any]]:
@@ -134,13 +184,16 @@ class CreativeOSStore:
         unknown = set(where) - columns
         if unknown:
             raise ValueError(f"unknown filters for {table}: {sorted(unknown)}")
-        clause = " AND ".join(f"{key}=?" for key in where)
-        sql = f"SELECT * FROM {table}" + (f" WHERE {clause}" if clause else "")
+        scope_clause, scope_params = self.scope_clause(table)
+        clause = " AND ".join([*(f"{key}=?" for key in where), f"({scope_clause})"])
+        sql = f"SELECT * FROM {table} WHERE {clause}"
         if table == "scenes":
             sql += " ORDER BY position ASC"
-        rows = self.conn.execute(sql, list(where.values())).fetchall()
+        rows = self.conn.execute(sql, [*where.values(), *scope_params]).fetchall()
         return [dict(row) for row in rows]
     def update(self, table: str, row_id: str, values: dict[str, Any]) -> dict[str, Any]:
+        self._assert_writable(table)
+        self.get(table, row_id)
         if table in {"generated_assets", "provider_cost_profiles", "fx_snapshots", "cost_recommendations", "cost_estimates", "cost_overrides", "qa_runs", "qa_check_results", "qa_reviews", "generation_lifecycle_events", "generation_results", "generation_provenance", "generation_spend_ledger", "generation_approvals", "generation_gate_runs"}:
             raise ValueError(f"{table} records are immutable")
         columns = self._columns(table)
@@ -159,17 +212,19 @@ class CreativeOSStore:
         if not data:
             return self.get(table, row_id)
         assignments = ",".join(f"{key}=?" for key in data)
-        cur = self.conn.execute(
-            f"UPDATE {table} SET {assignments} WHERE id=?",
-            [*data.values(), row_id],
-        )
-        if cur.rowcount == 0:
+        try:
+            self.conn.execute(f"UPDATE {table} SET {assignments} WHERE id=?",
+                              [*data.values(), row_id])
+            result = self.get(table, row_id)
+            self.conn.commit()
+            return result
+        except Exception:
             self.conn.rollback()
-            raise KeyError(f"{table}:{row_id}")
-        self.conn.commit()
-        return self.get(table, row_id)
+            raise
 
     def delete(self, table: str, row_id: str) -> None:
+        self._assert_writable(table)
+        self.get(table, row_id)
         if table in {"generated_assets", "provider_cost_profiles", "fx_snapshots", "cost_recommendations", "cost_estimates", "cost_overrides", "qa_runs", "qa_check_results", "qa_reviews", "generation_lifecycle_events", "generation_results", "generation_provenance", "generation_spend_ledger", "generation_approvals", "generation_gate_runs"}:
             raise ValueError(f"{table} records are immutable")
         self._columns(table)
