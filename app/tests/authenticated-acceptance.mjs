@@ -15,11 +15,16 @@ try {
     const page = await context.newPage()
     page.on('pageerror', error => errors.push(error.message))
     await page.goto(fixture.base)
+    if (process.env.CREATIVEOS_ACCEPTANCE_LOGIN_SCREENSHOT && account === fixture.accounts[0])
+      await page.screenshot({ path: process.env.CREATIVEOS_ACCEPTANCE_LOGIN_SCREENSHOT, fullPage: true })
     await page.getByLabel('Username', { exact: true }).fill(account.username)
     await page.getByLabel('Password', { exact: true }).fill(account.password)
     await page.getByRole('button', { name: 'Sign in', exact: true }).click()
     await page.getByLabel('Organization', { exact: true }).selectOption(account.org)
     await page.getByLabel('Brand / product', { exact: true }).selectOption(account.brand)
+    await page.locator('.platform-symbol').evaluate(img => { if (!img.complete || img.naturalWidth === 0) throw Error('Approved CreativeOS brand symbol not loaded') })
+    if (process.env.CREATIVEOS_ACCEPTANCE_DASHBOARD_SCREENSHOT && account === fixture.accounts[0])
+      await page.screenshot({ path: process.env.CREATIVEOS_ACCEPTANCE_DASHBOARD_SCREENSHOT, fullPage: true })
     await page.getByLabel('Title', { exact: true }).fill(account.username + ' private campaign')
     await page.getByLabel('Objective', { exact: true }).fill('Explore this independent product')
     await page.getByLabel('Audience', { exact: true }).fill('Business teams')
@@ -62,6 +67,12 @@ try {
     assert.ok(!JSON.stringify(state.workspace.brand).includes('HABI'))
     report.push(account.username + ': sign in -> organization -> brand -> campaign -> strategy -> storyboard -> MOCK generation -> real render QA PASS -> human review -> export/download PASS')
     if (fixture.screenshot) await page.screenshot({ path: fixture.screenshot, fullPage: true })
+    if (process.env.CREATIVEOS_ACCEPTANCE_MOBILE_SCREENSHOT && account === fixture.accounts[0]) {
+      await page.setViewportSize({ width: 390, height: 844 })
+      await page.screenshot({ path: process.env.CREATIVEOS_ACCEPTANCE_MOBILE_SCREENSHOT, fullPage: true })
+      assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1), 'Mobile layout must not overflow horizontally')
+      await page.setViewportSize({ width: 1440, height: 1100 })
+    }
   }
   for (let i = 0; i < 2; i++) {
     const page = contexts[i].pages()[0]

@@ -76,4 +76,12 @@ describe('authoritative workspace client', () => {
     await updating
     expect(client.snapshot().session?.version).toBe(2)
   })
+  it('treats an unauthenticated initial session check as a normal signed-out state', async () => {
+    const fetcher = vi.fn(async () => response({ error: 'Sign in required' }, 401))
+    const client = new WorkspaceClient(fetcher)
+    await client.refresh()
+    expect(client.snapshot().session).toBeNull()
+    expect(client.snapshot().error).toBe('')
+    expect(client.snapshot().busy).toBe(false)
+  })
 })

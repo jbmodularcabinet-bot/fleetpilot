@@ -107,9 +107,13 @@ export class WorkspaceClient {
       this.put({ workspace })
     }
   }
-  private async run(epoch: number, operation: () => Promise<void>) {
+  private async run(epoch: number, operation: () => Promise<void>, silentSignedOut = false) {
     try { await operation() } catch (error) {
       if (epoch !== this.epoch || error instanceof Superseded) return
+      if (silentSignedOut && error instanceof RequestError && error.status === 401) {
+        this.put(empty())
+        return
+      }
       const message = error instanceof Error ? error.message : 'Request failed'
       if (error instanceof RequestError && [401, 403, 409].includes(error.status)) {
         // Clear every dependent view before reconciling. Never replay the rejected mutation.
@@ -126,7 +130,7 @@ export class WorkspaceClient {
   }
   refresh = async () => {
     const epoch = this.begin(true)
-    await this.run(epoch, async () => this.populate(epoch, await this.request<Session>(epoch, '/api/session')))
+    await this.run(epoch, async () => this.populate(epoch, await this.request<Session>(epoch, '/api/session')), true)
   }
   externalChange = () => this.refresh()
   async login(username: string, password: string) {
