@@ -77,10 +77,10 @@ class DirectorIntegrationTests(unittest.TestCase):
 
     def test_migration_v2_v3_rollback_reapply_preserves_brand(self):
         brand_id = self.brand["id"]
-        self.assertEqual(self.store.schema_version(), 11)
+        self.assertEqual(self.store.schema_version(), 12)
         self.assertEqual(self.store.rollback_to(3), 3)
         self.assertEqual(self.store.get("brand_profiles", brand_id)["name"], "FleetPilot")
-        self.assertEqual(self.store.migrate_to_latest(), 11)
+        self.assertEqual(self.store.migrate_to_latest(), 12)
         self.assertEqual(self.store.get("brand_profiles", brand_id)["name"], "FleetPilot")
 
 

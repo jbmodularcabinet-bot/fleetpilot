@@ -1,5 +1,37 @@
 # Current State
 
+## Authenticated scope and legacy adoption - 2026-09-30
+
+Status: PASS for the local authenticated release gate with explicitly labelled MOCK generation.
+Baseline: master at bbcb32026c3dbc3364b627d79763d7d3b1459040; tracked tree clean.
+
+Schema v12 and the loopback HTTP entry point enforce authenticated user -> current organization
+membership -> server-owned active organization/brand -> scoped campaign services. HttpOnly
+sessions, CSRF/origin/Host checks, membership versions and context revisions reject forged,
+revoked, missing or stale authority. Request transactions serialize writes with scope changes
+and membership revocation. Actors and ownership are derived server-side.
+
+The React entry point now supports sign-in, persisted organization/brand selectors, campaign
+production, preview, QA, review and export. Switching context clears dependent views/media and
+rejects late responses. The old fixture-only App.tsx remains unchanged as regression coverage.
+
+Legacy adoption requires a platform administrator with OWNER membership, an explicit preview
+and confirmation. Whole-brand ownership changes, metadata normalization, immutable before/after
+audit and single-use preview consumption are atomic. Ambiguous or changed records are blocked.
+No silent adoption and no automatic source-file moves.
+
+Final verification: 136 backend tests PASS (79.224s), 13 frontend tests PASS, lint 0 warnings/errors,
+explicit TypeScript check PASS, production build PASS, v11/v12 migration/rollback checks PASS.
+Chromium: two independent signed-in users each completed select -> campaign -> strategy/storyboard
+-> MOCK generation -> real render QA PASS -> human review -> export/download. Bidirectional
+foreign data/authority probes were denied; cross-tab switching/reload and explicit adoption passed.
+No JavaScript page exceptions; integrity/FK checks, two approved exports and adoption audit passed.
+
+No deployment, paid provider calls or existing production/proof database migration. Eight unrelated
+untracked files remain untouched. Live/public rollout and old media/render-link reconciliation
+remain separate operational work. See AUTHENTICATED_SCOPE.md for commands, evidence and file manifest.
+
+
 ## Multi-brand foundation ? 2026-09-30
 
 Status: PASS for the local backend foundation.

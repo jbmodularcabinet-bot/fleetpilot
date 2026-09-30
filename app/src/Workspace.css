@@ -1,0 +1,48 @@
+:root { font-family: Inter, system-ui, sans-serif; color: #e8ecf5; background: #10151f; font-synthesis: none; }
+* { box-sizing: border-box; }
+body { margin: 0; min-width: 360px; }
+.workspace-shell { max-width: 1440px; margin: auto; padding: 0 32px 48px; }
+.workspace-header { display: flex; gap: 24px; align-items: center; min-height: 88px; border-bottom: 1px solid #30394c; }
+.workspace-header strong { font-size: 24px; letter-spacing: -1px; }
+.workspace-header span { color: #aab5ca; flex: 1; }
+.workspace-shell main { padding-top: 32px; }
+.workspace-shell h1 { font-size: clamp(28px, 3vw, 42px); letter-spacing: -1px; margin: 12px 0; }
+.workspace-shell h2 { font-size: 22px; }
+.workspace-shell p { line-height: 1.65; color: #b9c5d9; }
+.workspace-shell button { background: #86e7c4; border: 1px solid transparent; color: #102b23; border-radius: 8px; padding: 11px 16px; cursor: pointer; font: inherit; font-weight: 650; }
+.workspace-shell button:disabled { opacity: .4; cursor: default; }
+.workspace-shell button:focus-visible, .workspace-shell input:focus-visible, .workspace-shell select:focus-visible, .workspace-shell textarea:focus-visible { outline: 3px solid #a8ccff; outline-offset: 3px; }
+.workspace-shell label { display: grid; gap: 8px; font-size: 14px; }
+.workspace-shell input, .workspace-shell select, .workspace-shell textarea { width: 100%; border: 1px solid #47546a; background: #182131; color: #f0f4fa; border-radius: 8px; padding: 12px; font: inherit; }
+.workspace-shell textarea { min-height: 80px; }
+.signin-card { max-width: 480px; margin: 60px auto; }
+.signin-card form, .campaign-form { display: grid; gap: 16px; }
+.eyebrow { color: #86e7c4 !important; font-size: 12px; letter-spacing: 2px; font-weight: 700; }
+.scope-selectors { display: flex; align-items: end; gap: 20px; padding-bottom: 28px; border-bottom: 1px solid #30394c; }
+.scope-selectors label { min-width: 220px; }
+.scope-selectors span { padding-bottom: 12px; color: #aab5ca; }
+.workspace-grid { display: grid; grid-template-columns: 300px minmax(0, 1fr); gap: 40px; padding-top: 24px; }
+.workspace-grid aside { border-right: 1px solid #30394c; padding-right: 28px; }
+.campaign-list { list-style: none; padding: 0; display: grid; gap: 8px; }
+.campaign-list button { width: 100%; text-align: left; background: #202c40; color: #e8ecf5; }
+.campaign-list button[aria-pressed="true"] { border-color: #86e7c4; }
+.campaign-content { min-width: 0; }
+.preview-notice, .workspace-error { padding: 16px; border: 1px solid #536e7a; border-radius: 10px; background: #192932; }
+.workspace-error { border-color: #ff988f; color: #ffd3cc !important; }
+.workflow-actions { display: flex; gap: 12px; flex-wrap: wrap; margin: 24px 0; }
+.workspace-shell details { padding: 16px 0; border-top: 1px solid #30394c; margin-top: 16px; }
+.workspace-shell summary { cursor: pointer; font-weight: 600; }
+.workspace-shell pre { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 12px; color: #b9c5d9; background: #141d2a; padding: 16px; max-height: 360px; overflow: auto; }
+.workspace-shell dt { color: #91a1bc; text-transform: capitalize; }
+.workspace-shell dd { margin: 6px 0 18px; }
+.human-review { margin: 24px 0; }
+.human-review button { margin: 12px 10px 0 0; }
+.adoption-panel { margin-top: 40px; padding: 24px; border: 1px solid #47546a; border-radius: 12px; }
+.adoption-panel li { margin: 12px 0; }
+.adoption-panel li button { margin-left: 16px; }
+.adoption-preview { margin-top: 24px; border-top: 1px solid #47546a; }
+.workspace-shell .confirmation { display: flex; align-items: center; margin: 20px 0; }
+.workspace-shell .confirmation input { width: 20px; height: 20px; }
+@media (max-width: 760px) { .workspace-shell { padding: 0 18px 32px; } .workspace-header { flex-wrap: wrap; gap: 12px; padding: 16px 0; } .scope-selectors { flex-wrap: wrap; } .scope-selectors label { width: 100%; } .workspace-grid { grid-template-columns: 1fr; gap: 20px; } .workspace-grid aside { border-right: 0; padding-right: 0; } }
+
+.generated-preview { display: block; width: 100%; margin: 20px 0; border-radius: 10px; }

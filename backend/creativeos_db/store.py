@@ -114,6 +114,11 @@ class CreativeOSStore:
         if self.scope is not None:
             raise PermissionError("schema changes require an administrative connection")
         current = self.schema_version()
+        if current >= 12 and target_version < 12:
+            if self.conn.execute("SELECT 1 FROM auth_users LIMIT 1").fetchone():
+                raise ValueError("rollback would discard authentication or adoption evidence")
+            if self.conn.execute("SELECT 1 FROM generation_requests WHERE render_job_id IS NOT NULL OR qa_run_id IS NOT NULL LIMIT 1").fetchone():
+                raise ValueError("rollback would discard production workflow references")
         if current >= 11 and target_version < 11:
             if self.conn.execute("SELECT 1 FROM organizations LIMIT 1").fetchone():
                 raise ValueError("rollback would discard organization ownership")
