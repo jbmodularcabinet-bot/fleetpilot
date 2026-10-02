@@ -1,0 +1,13 @@
+.git
+.env
+.env.*
+app/node_modules
+app/dist
+backend/generated
+__pycache__
+*.pyc
+*.sqlite
+*.sqlite3
+BATCH0_BASELINE.patch
+app/patch_*.py
+backend/patch_*.py

@@ -69,3 +69,37 @@ class HTTPBoundaryTests(AuthFixture, unittest.TestCase):
         status, error, _ = self.send("POST", "/api/context", {"organization_id": "forged", "brand_profile_id": "forged"}, headers)
         self.assertEqual(status, 403)
         self.assertNotIn(str(self.db), json.dumps(error))
+
+    def test_public_https_origin_uses_secure_cookie_and_health(self):
+        server = create_server(
+            self.db, Path(self.tmp.name) / "public-output", None,
+            port=0, bind_host="127.0.0.1", public_origin="https://creative.example",
+        )
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+        base = f"http://127.0.0.1:{server.server_port}"
+        try:
+            health = urllib.request.Request(base + "/health", method="GET", headers={"Host": "creative.example"})
+            with urllib.request.urlopen(health) as response:
+                payload = json.loads(response.read())
+                self.assertEqual(response.status, 200)
+                self.assertEqual(payload["status"], "ok")
+                self.assertEqual(payload["schema_version"], 13)
+
+            login = urllib.request.Request(
+                base + "/api/login", method="POST",
+                data=json.dumps({"username": "alice", "password": "test-password-only-123"}).encode(),
+                headers={
+                    "Host": "creative.example",
+                    "Origin": "https://creative.example",
+                    "Content-Type": "application/json",
+                },
+            )
+            with urllib.request.urlopen(login) as response:
+                cookie = response.headers["Set-Cookie"]
+                self.assertIn("Secure", cookie)
+                self.assertIn("SameSite=Strict", cookie)
+        finally:
+            server.shutdown()
+            server.server_close()
+            thread.join()

@@ -4,7 +4,7 @@ import CreativeIntelligence from './CreativeIntelligence'
 
 afterEach(()=>cleanup())
 const session={user:{id:'u',username:'owner',platform_admin:false},organizations:[{id:'o',name:'Org',classification:'EXTERNAL',role:'OWNER'}],scope:{organization_id:'o',brand_profile_id:'b'},version:4,csrf:'csrf'}
-const base={market_intelligence:[],hypotheses:[],reference_patterns:[],experiments:[],assets:[{id:'a1',asset_kind:'ASSET',label:'Approved render'}],provider_capabilities:[]}
+const base={market_intelligence:[],hypotheses:[],reference_patterns:[],experiments:[],assets:[{id:'a1',asset_kind:'ASSET',label:'Approved render',truth_level:'REAL_PROJECT',reference_fidelity_required:true}],provider_capabilities:[]}
 const json=(value:unknown)=>new Response(JSON.stringify(value),{status:200})
 
 describe('Creative Intelligence critical path',()=>{
@@ -17,6 +17,7 @@ describe('Creative Intelligence critical path',()=>{
     })
     render(<CreativeIntelligence session={session} canWrite fetcher={fetcher}/>)
     expect(await screen.findByRole('heading',{name:'Evidence before generation.'})).toBeInTheDocument()
+    expect(screen.getByRole('option',{name:/Approved render.*REAL PROJECT.*FIDELITY REQUIRED/i})).toBeInTheDocument()
     fireEvent.change(screen.getByLabelText('Hypothesis objective'),{target:{value:'Increase qualified renovation inquiries'}})
     fireEvent.change(screen.getByLabelText('Hypothesis hook'),{target:{value:'Design before you build'}})
     fireEvent.click(screen.getByRole('button',{name:'Create hypothesis'}))
