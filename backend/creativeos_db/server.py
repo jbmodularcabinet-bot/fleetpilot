@@ -11,13 +11,13 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import urlsplit, unquote
 
-from .api import API
+from .creative_intelligence_api import ApplicationAPI
 from .auth import AccessError, SESSION_SECONDS
 from .store import CreativeOSStore
 
 
 def create_server(db_path, output_root, dist_root, *, port=8000):
-    api = API(db_path, output_root)
+    api = ApplicationAPI(db_path, output_root)
     dist = Path(dist_root).resolve() if dist_root else None
 
     class Handler(BaseHTTPRequestHandler):
@@ -111,8 +111,8 @@ def main():
     parser.add_argument("--port", type=int, default=8000)
     args = parser.parse_args()
     with CreativeOSStore(args.db) as store:
-        if store.schema_version() != 12:
-            parser.error("Migrate and verify the database to schema 12 before starting")
+        if store.schema_version() != 13:
+            parser.error("Migrate and verify the database to schema 13 before starting")
     server = create_server(args.db, args.output, args.dist, port=args.port)
     print(f"CreativeOS local authenticated workspace: http://127.0.0.1:{server.server_port}", flush=True)
     try:

@@ -12,7 +12,7 @@ class MultiBrandFoundationTests(unittest.TestCase):
         self.tmp = tempfile.TemporaryDirectory()
         self.db = Path(self.tmp.name) / "creativeos.sqlite3"
         self.store = CreativeOSStore(self.db)
-        self.assertEqual(self.store.migrate_to_latest(), 12)
+        self.assertEqual(self.store.migrate_to_latest(), 13)
         self.multi = MultiBrandService(self.store)
         self.habi = self.multi.create_organization(
             "HABI Group",
@@ -283,7 +283,7 @@ class MultiBrandFoundationTests(unittest.TestCase):
             self._brand(self.habi["id"], "brand-shared-c", "Shared Name")
         with self.assertRaises(Exception):
             self.store.rollback_to(10)
-        self.assertEqual(self.store.schema_version(), 12)
+        self.assertEqual(self.store.schema_version(), 13)
         self.assertIn("organization_id", self.store._columns("brand_profiles"))
 
     def test_campaign_resolves_only_its_brand_brain(self):
@@ -425,7 +425,7 @@ class MultiBrandFoundationTests(unittest.TestCase):
     def test_v10_v11_legacy_compatibility(self):
         other = Path(self.tmp.name) / "legacy.sqlite3"
         store = CreativeOSStore(other)
-        self.assertEqual(store.migrate_to_latest(), 12)
+        self.assertEqual(store.migrate_to_latest(), 13)
         self.assertEqual(store.rollback_to(10), 10)
         legacy_brand = store.create(
             "brand_profiles", {"id": "legacy-brand", "name": "Legacy"}
@@ -438,14 +438,14 @@ class MultiBrandFoundationTests(unittest.TestCase):
                 "title": "Legacy Campaign",
             },
         )
-        self.assertEqual(store.migrate_to_latest(), 12)
+        self.assertEqual(store.migrate_to_latest(), 13)
         migrated_brand = store.get("brand_profiles", legacy_brand["id"])
         migrated_campaign = store.get("campaigns", legacy_campaign["id"])
         self.assertIsNone(migrated_brand["organization_id"])
         self.assertIsNone(migrated_campaign["organization_id"])
         self.assertEqual(store.rollback_to(10), 10)
         self.assertEqual(store.get("brand_profiles", legacy_brand["id"])["name"], "Legacy")
-        self.assertEqual(store.migrate_to_latest(), 12)
+        self.assertEqual(store.migrate_to_latest(), 13)
         self.assertEqual(store.foreign_key_violations(), [])
         store.close()
 

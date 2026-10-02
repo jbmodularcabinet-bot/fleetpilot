@@ -2,6 +2,7 @@ import { useEffect, useState, useSyncExternalStore } from 'react'
 import type { FormEvent } from 'react'
 import { WorkspaceClient } from './scope-client'
 import type { Detail } from './scope-client'
+import CreativeIntelligence from './CreativeIntelligence'
 import './Workspace.css'
 
 const defaultClient = new WorkspaceClient()
@@ -10,6 +11,7 @@ const navigation = [
   { id: 'workspace-overview', label: 'Dashboard', icon: '◈' },
   { id: 'campaigns-panel', label: 'Campaigns', icon: '▤' },
   { id: 'brand-brain', label: 'Brand Brain', icon: '◇' },
+  { id: 'creative-intelligence', label: 'Creative Intelligence', icon: '◉' },
   { id: 'creative-director', label: 'Creative Director', icon: '✳' },
   { id: 'storyboard', label: 'Storyboard', icon: '▧' },
   { id: 'generation', label: 'Generation', icon: '✧' },
@@ -38,7 +40,7 @@ export default function Workspace({ client = defaultClient }: { client?: Workspa
   }
   const navigate = (id: string) => {
     setActiveArea(id)
-    document.getElementById(id)?.scrollIntoView?.({ behavior: window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth', block: 'start' })
+    requestAnimationFrame(() => document.getElementById(id)?.scrollIntoView?.({ behavior: window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth', block: 'start' }))
   }
   return <div className="workspace-shell">
     <header className="workspace-header">
@@ -97,7 +99,7 @@ export default function Workspace({ client = defaultClient }: { client?: Workspa
           <nav className="production-nav" aria-label="Production navigation">
             <span className="nav-caption">PRODUCTION</span>
             {navigation.map(item => <button key={item.id} type="button" className={activeArea === item.id ? 'nav-link active' : 'nav-link'}
-              aria-pressed={activeArea === item.id} disabled={busy || (!detail && !['workspace-overview', 'campaigns-panel', 'brand-brain'].includes(item.id))}
+              aria-pressed={activeArea === item.id} disabled={busy || (!detail && !['workspace-overview', 'campaigns-panel', 'brand-brain', 'creative-intelligence'].includes(item.id))}
               onClick={() => navigate(item.id)}><span aria-hidden="true" className="nav-icon">{item.icon}</span>{item.label}</button>)}
           </nav>
           <section className="sidebar-campaigns" id="campaigns-panel">
@@ -123,6 +125,7 @@ export default function Workspace({ client = defaultClient }: { client?: Workspa
             <div className="metric-card"><span>Automated QA</span><strong>{detail?.qa_runs.length ? text(detail.qa_runs[detail.qa_runs.length - 1].overall_result) : 'PENDING'}</strong><small>Not human approval</small></div>
             <div className="metric-card"><span>Publishing</span><strong>MANUAL</strong><small>Automatic publishing disabled</small></div>
           </div>
+          {activeArea === 'creative-intelligence' && <CreativeIntelligence key={'ci:'+session.version} session={session} canWrite={!!canWrite} />}
           <section className="workspace-project" aria-label="Selected campaign">
             {detail ? <CampaignPanel key={session.version + ':' + detail.campaign.id} detail={detail} client={client} disabled={busy || !canWrite} busy={busy} mediaUrl={state.mediaUrl} /> :
               <div className="no-campaign"><span className="eyebrow">CAMPAIGN STUDIO</span><h2>Make your next campaign.</h2>

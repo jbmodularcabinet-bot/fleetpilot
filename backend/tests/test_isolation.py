@@ -127,7 +127,7 @@ class IsolationTests(unittest.TestCase):
                 scoped.rollback_to(10)
         with self.assertRaises(ValueError):
             self.store.rollback_to(10)
-        self.assertEqual(self.store.schema_version(), 12)
+        self.assertEqual(self.store.schema_version(), 13)
         self.assertEqual(len(self.store.list("organizations")), 2)
         self.assertEqual(self.store.foreign_key_violations(), [])
 
@@ -245,7 +245,7 @@ class IsolationTests(unittest.TestCase):
             self.assertEqual(old.schema_version(), 10)
             self.assertEqual(old.get("brand_profiles", brand["id"]), original)
             self.assertNotIn("organization_id", old._columns("brand_profiles"))
-            self.assertEqual(old.migrate_to_latest(), 12)
+            self.assertEqual(old.migrate_to_latest(), 13)
             self.assertEqual(old.foreign_key_violations(), [])
 
     def test_scoped_governance_rejects_other_brand_before_any_write(self):

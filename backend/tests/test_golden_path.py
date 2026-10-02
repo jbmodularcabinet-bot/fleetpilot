@@ -159,7 +159,7 @@ class Batch11GoldenPathTests(unittest.TestCase):
         self.assertEqual(visual_before, COMMITTED_HERO_SHA256)
 
         store = CreativeOSStore(self.proof_db)
-        self.assertEqual(store.migrate_to_latest(), 12)
+        self.assertEqual(store.migrate_to_latest(), 13)
         try:
             brand = BrandBrainService(store).load_fleetpilot_fixture()
             self.assertEqual(brand["name"], "FleetPilot")
@@ -392,7 +392,7 @@ class Batch11GoldenPathTests(unittest.TestCase):
 
         reopened = CreativeOSStore(self.proof_db)
         try:
-            self.assertEqual(reopened.schema_version(), 12)
+            self.assertEqual(reopened.schema_version(), 13)
             self.assertEqual(reopened.get("brand_profiles", proof_ids["brand"])["id"], proof_ids["brand"])
             self.assertEqual(reopened.get("campaigns", proof_ids["campaign"])["id"], proof_ids["campaign"])
             self.assertEqual(reopened.get("director_plans", proof_ids["plan"])["status"], "APPROVED")

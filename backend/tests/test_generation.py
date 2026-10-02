@@ -16,7 +16,7 @@ class GenerationPipelineTests(unittest.TestCase):
         self.tmp = tempfile.TemporaryDirectory()
         self.db = Path(self.tmp.name) / "db.sqlite3"
         self.store = CreativeOSStore(self.db)
-        self.assertEqual(self.store.migrate_to_latest(), 12)
+        self.assertEqual(self.store.migrate_to_latest(), 13)
         brand = BrandBrainService(self.store).load_fleetpilot_fixture()
         campaign = self.store.create("campaigns", {"brand_profile_id": brand["id"], "title": "Gen"})
         board = self.store.create("storyboards", {"campaign_id": campaign["id"], "title": "Board"})
@@ -70,7 +70,7 @@ class GenerationPipelineTests(unittest.TestCase):
         scene_id = self.scene["id"]
         self.assertEqual(self.store.rollback_to(4), 4)
         self.assertEqual(self.store.get("scenes", scene_id)["title"], "Shot")
-        self.assertEqual(self.store.migrate_to_latest(), 12)
+        self.assertEqual(self.store.migrate_to_latest(), 13)
         self.assertEqual(self.store.get("scenes", scene_id)["title"], "Shot")
 
 if __name__ == "__main__":
