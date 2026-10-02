@@ -47,17 +47,18 @@ class GenerationQueueService:
         stamp = _iso(moment)
         token = secrets.token_urlsafe(24)
         lease = _iso(moment + timedelta(seconds=lease_seconds))
+        scope_clause, scope_params = self.store.scope_clause("generation_queue")
         conn = self.store.conn
         conn.execute("BEGIN IMMEDIATE")
         try:
-            row = conn.execute("""
+            row = conn.execute(f"""
                 SELECT * FROM generation_queue
-                WHERE state='QUEUED' AND available_at<=?
+                WHERE ({scope_clause}) AND state='QUEUED' AND available_at<=?
                   AND cancel_requested_at IS NULL
                   AND attempt_count < max_attempts
                 ORDER BY priority ASC, available_at ASC, created_at ASC, id ASC
                 LIMIT 1
-            """, (stamp,)).fetchone()
+            """, (*scope_params, stamp)).fetchone()
             if row is None:
                 conn.commit()
                 return None
@@ -78,6 +79,7 @@ class GenerationQueueService:
 
     def claim_job(self, generation_job_id: str, worker_id: str,
                   lease_seconds: int = 60, now: datetime | None = None) -> dict[str, Any] | None:
+        self.store.get("generation_jobs", generation_job_id)
         moment = now or _now()
         stamp = _iso(moment)
         token = secrets.token_urlsafe(24)
@@ -186,11 +188,12 @@ class GenerationQueueService:
         return self.store.get("generation_queue", queue_id)
     def recover_stale(self, now: datetime | None = None) -> list[dict[str, Any]]:
         stamp = _iso(now or _now())
-        rows = self.store.conn.execute("""
+        scope_clause, scope_params = self.store.scope_clause("generation_queue")
+        rows = self.store.conn.execute(f"""
             SELECT * FROM generation_queue
-            WHERE state IN ('CLAIMED','RUNNING') AND lease_expires_at < ?
+            WHERE ({scope_clause}) AND state IN ('CLAIMED','RUNNING') AND lease_expires_at < ?
             ORDER BY created_at ASC, id ASC
-        """, (stamp,)).fetchall()
+        """, (*scope_params, stamp)).fetchall()
         recovered: list[dict[str, Any]] = []
         for raw in rows:
             row = dict(raw)

@@ -153,6 +153,7 @@ class QAService:
             raise
 
     def retry_error_qa_run(self, qa_run_id: str) -> dict[str, Any]:
+        self.store.get("qa_runs", qa_run_id)
         conn = self.store.conn
         conn.execute("BEGIN IMMEDIATE")
         try:
@@ -369,6 +370,7 @@ class QAService:
         ]
         return checks
     def _mark_error(self, qa_run_id: str, code: str, message: str) -> dict[str, Any]:
+        self.store.get("qa_runs", qa_run_id)
         stamp = now_iso()
         conn = self.store.conn
         conn.execute("BEGIN IMMEDIATE")
@@ -389,6 +391,7 @@ class QAService:
             raise
 
     def _finalize(self, qa_run_id: str, checks: list[dict[str, Any]]) -> dict[str, Any]:
+        self.store.get("qa_runs", qa_run_id)
         conn = self.store.conn
         conn.execute("BEGIN IMMEDIATE")
         try:

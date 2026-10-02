@@ -724,3 +724,128 @@ DELETE FROM schema_migrations WHERE version=10;
 """
 
 MIGRATIONS[10] = (MIGRATION_10_UP, MIGRATION_10_DOWN)
+
+MIGRATION_11_UP = """
+CREATE TABLE organizations(
+ id TEXT PRIMARY KEY,
+ name TEXT NOT NULL,
+ slug TEXT NOT NULL COLLATE NOCASE UNIQUE,
+ classification TEXT NOT NULL DEFAULT 'EXTERNAL'
+   CHECK(classification IN ('NATIVE','EXTERNAL')),
+ ecosystem_key TEXT NOT NULL DEFAULT '',
+ created_at TEXT NOT NULL,
+ updated_at TEXT NOT NULL
+);
+ALTER TABLE brand_profiles ADD COLUMN organization_id TEXT
+ REFERENCES organizations(id) ON DELETE RESTRICT;
+ALTER TABLE brand_profiles ADD COLUMN entity_type TEXT NOT NULL DEFAULT 'BRAND'
+ CHECK(entity_type IN ('BRAND','PRODUCT'));
+DROP INDEX IF EXISTS ux_brand_profiles_name_nocase;
+CREATE UNIQUE INDEX ux_brand_profiles_org_name_nocase
+ ON brand_profiles(organization_id, lower(name))
+ WHERE organization_id IS NOT NULL;
+CREATE UNIQUE INDEX ux_brand_profiles_legacy_name_nocase
+ ON brand_profiles(lower(name))
+ WHERE organization_id IS NULL;
+ALTER TABLE campaigns ADD COLUMN organization_id TEXT
+ REFERENCES organizations(id) ON DELETE RESTRICT;
+CREATE INDEX ix_campaigns_organization_brand
+ ON campaigns(organization_id, brand_profile_id);
+CREATE TRIGGER trg_campaign_scope_insert
+BEFORE INSERT ON campaigns
+WHEN (SELECT organization_id FROM brand_profiles WHERE id=NEW.brand_profile_id)
+     IS NOT NEW.organization_id
+BEGIN
+ SELECT RAISE(ABORT, 'campaign organization does not match brand organization');
+END;
+CREATE TRIGGER trg_campaign_scope_update
+BEFORE UPDATE OF organization_id, brand_profile_id ON campaigns
+WHEN (SELECT organization_id FROM brand_profiles WHERE id=NEW.brand_profile_id)
+     IS NOT NEW.organization_id
+BEGIN
+ SELECT RAISE(ABORT, 'campaign organization does not match brand organization');
+END;
+CREATE TRIGGER trg_brand_scope_update
+BEFORE UPDATE OF organization_id ON brand_profiles
+WHEN EXISTS(
+ SELECT 1 FROM campaigns
+ WHERE brand_profile_id=OLD.id
+   AND organization_id IS NOT NEW.organization_id
+)
+BEGIN
+ SELECT RAISE(ABORT, 'brand organization cannot diverge from owned campaigns');
+END;
+CREATE VIEW v_campaign_scope AS
+ SELECT c.id AS campaign_id, c.organization_id, c.brand_profile_id
+ FROM campaigns c;
+CREATE VIEW v_asset_scope AS
+ SELECT a.id AS asset_id,
+        COALESCE(a.campaign_id, sb.campaign_id) AS campaign_id,
+        c.organization_id, c.brand_profile_id
+ FROM assets a
+ LEFT JOIN scenes s ON s.id=a.scene_id
+ LEFT JOIN storyboards sb ON sb.id=s.storyboard_id
+ LEFT JOIN campaigns c ON c.id=COALESCE(a.campaign_id, sb.campaign_id);
+CREATE VIEW v_generated_asset_scope AS
+ SELECT ga.id AS generated_asset_id, sb.campaign_id,
+        c.organization_id, c.brand_profile_id
+ FROM generated_assets ga
+ JOIN asset_requirements ar ON ar.id=ga.asset_requirement_id
+ JOIN scenes s ON s.id=ar.scene_id
+ JOIN storyboards sb ON sb.id=s.storyboard_id
+ JOIN campaigns c ON c.id=sb.campaign_id;
+CREATE VIEW v_cost_recommendation_scope AS
+ SELECT cr.id AS cost_recommendation_id, cr.campaign_id,
+        c.organization_id, c.brand_profile_id
+ FROM cost_recommendations cr
+ JOIN campaigns c ON c.id=cr.campaign_id;
+CREATE VIEW v_qa_review_scope AS
+ SELECT qr.id AS qa_review_id, ct.campaign_id,
+        c.organization_id, c.brand_profile_id
+ FROM qa_reviews qr
+ JOIN qa_runs qrun ON qrun.id=qr.qa_run_id
+ JOIN render_jobs rj ON rj.id=qrun.render_job_id
+ JOIN composition_timelines ct ON ct.id=rj.timeline_id
+ JOIN campaigns c ON c.id=ct.campaign_id;
+CREATE VIEW v_export_scope AS
+ SELECT ej.id AS export_job_id, ej.campaign_id,
+        c.organization_id, c.brand_profile_id
+ FROM export_jobs ej
+ JOIN campaigns c ON c.id=ej.campaign_id;
+INSERT INTO schema_migrations(version) VALUES(11);
+"""
+MIGRATION_11_DOWN = """
+CREATE UNIQUE INDEX IF NOT EXISTS ux_brand_profiles_name_nocase
+ ON brand_profiles(lower(name));
+DROP VIEW IF EXISTS v_export_scope;
+DROP VIEW IF EXISTS v_qa_review_scope;
+DROP VIEW IF EXISTS v_cost_recommendation_scope;
+DROP VIEW IF EXISTS v_generated_asset_scope;
+DROP VIEW IF EXISTS v_asset_scope;
+DROP VIEW IF EXISTS v_campaign_scope;
+DROP TRIGGER IF EXISTS trg_brand_scope_update;
+DROP TRIGGER IF EXISTS trg_campaign_scope_update;
+DROP TRIGGER IF EXISTS trg_campaign_scope_insert;
+DROP INDEX IF EXISTS ix_campaigns_organization_brand;
+DROP INDEX IF EXISTS ux_brand_profiles_legacy_name_nocase;
+DROP INDEX IF EXISTS ux_brand_profiles_org_name_nocase;
+ALTER TABLE campaigns DROP COLUMN organization_id;
+ALTER TABLE brand_profiles DROP COLUMN entity_type;
+ALTER TABLE brand_profiles DROP COLUMN organization_id;
+DROP TABLE IF EXISTS organizations;
+DELETE FROM schema_migrations WHERE version=11;
+"""
+from .scope_schema import ownership_sql
+
+_SCOPE_11_UP, _SCOPE_11_DOWN = ownership_sql()
+MIGRATION_11_UP += _SCOPE_11_UP
+MIGRATION_11_DOWN = _SCOPE_11_DOWN + "\n" + MIGRATION_11_DOWN
+MIGRATIONS[11] = (MIGRATION_11_UP, MIGRATION_11_DOWN)
+
+from .auth_schema import UP as MIGRATION_12_UP, DOWN as MIGRATION_12_DOWN
+
+MIGRATIONS[12] = (MIGRATION_12_UP, MIGRATION_12_DOWN)
+
+from .creative_intelligence_schema import UP as MIGRATION_13_UP, DOWN as MIGRATION_13_DOWN
+
+MIGRATIONS[13] = (MIGRATION_13_UP, MIGRATION_13_DOWN)

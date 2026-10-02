@@ -10,10 +10,10 @@ from typing import Any
 from uuid import uuid4
 
 from .brand_service import BrandBrainService
-from .higgsfield_provider import (
-    HiggsfieldProvider,
-    HiggsfieldProviderError,
-    HiggsfieldSubmission,
+from .provider_contract import (
+    AsyncGenerationProvider,
+    ProviderError,
+    ProviderSubmission,
 )
 from .queue import GenerationQueueService
 from .store import CreativeOSStore, now_iso
@@ -234,7 +234,10 @@ class BudgetGuard:
         max_attempts: int = 2,
         hard_cap: bool = True,
     ) -> dict[str, Any]:
-        self.store.get("campaigns", campaign_id)
+        campaign = self.store.get("campaigns", campaign_id)
+        campaign_org = campaign.get("organization_id")
+        if campaign_org is not None and campaign_org != tenant_id:
+            raise PermissionError("campaign does not belong to tenant organization")
         values = {
             "tenant_id": tenant_id,
             "campaign_id": campaign_id,
@@ -547,6 +550,13 @@ class GenerationOrchestrator:
         board = self.store.get("storyboards", scene["storyboard_id"])
         campaign = self.store.get("campaigns", board["campaign_id"])
         brand = BrandBrainService(self.store).get(campaign["brand_profile_id"])
+        campaign_org = campaign.get("organization_id")
+        brand_org = brand.get("organization_id")
+        if campaign_org is not None and brand_org is not None and campaign_org != brand_org:
+            raise RuntimeError("campaign and Brand Brain organization scope disagree")
+        scoped_org = campaign_org or brand_org
+        if scoped_org is not None and scoped_org != tenant_id:
+            raise PermissionError("generation request is outside tenant organization")
         capability = str(requirement["asset_type"]).lower().strip()
         if bool(scene.get("immutable_ui")) and capability in {"image", "video"}:
             raise PermissionError("immutable UI cannot enter generative routing")
@@ -593,6 +603,7 @@ class GenerationOrchestrator:
     def _advance(
         self, request_id: str, actor: str, evidence: dict[str, Any] | None = None
     ) -> dict[str, Any]:
+        self.store.get("generation_requests", request_id)
         conn = self.store.conn
         conn.execute("BEGIN IMMEDIATE")
         try:
@@ -852,6 +863,9 @@ class GenerationOrchestrator:
         if int(request["lifecycle_step"]) != 9:
             raise PermissionError("human approval is required before export")
         render = self.store.get("render_jobs", render_job_id)
+        timeline = self.store.get("composition_timelines", render["timeline_id"])
+        if timeline["campaign_id"] != request["campaign_id"]:
+            raise PermissionError("export render belongs to another campaign")
         qa = self.store.get("qa_runs", qa_run_id)
         if qa["render_job_id"] != render_job_id or qa["overall_result"] != "PASS":
             raise PermissionError("render QA must PASS before export")
@@ -880,14 +894,14 @@ class GenerationOrchestrator:
         return {"request": ready, "export": export}
 
 
-class HiggsfieldGenerationWorker:
+class ProviderGenerationWorker:
     def __init__(
         self,
         store: CreativeOSStore,
-        provider: HiggsfieldProvider,
+        provider: AsyncGenerationProvider,
         output_root: str | Path,
         *,
-        worker_id: str = "higgsfield-worker",
+        worker_id: str = "generation-worker",
         orchestrator: GenerationOrchestrator | None = None,
     ):
         self.store = store
@@ -1004,9 +1018,9 @@ class HiggsfieldGenerationWorker:
         if not attempt or attempt["state"] in {"FAILED", "CANCELLED", "REJECTED"}:
             attempt = self._new_attempt(request, route, plan)
 
-        submission: HiggsfieldSubmission
+        submission: ProviderSubmission
         if attempt.get("provider_request_id"):
-            submission = HiggsfieldSubmission(
+            submission = ProviderSubmission(
                 request_id=attempt["provider_request_id"],
                 status="in_progress",
                 status_url=attempt["provider_status_url"],
@@ -1044,7 +1058,7 @@ class HiggsfieldGenerationWorker:
                         }
                     },
                 )
-            except HiggsfieldProviderError as exc:
+            except ProviderError as exc:
                 state = "SUBMIT_UNCERTAIN" if exc.submit_uncertain else "FAILED"
                 attempt = self.store.update(
                     "generation_attempts",
@@ -1091,7 +1105,7 @@ class HiggsfieldGenerationWorker:
         try:
             final = self.provider.poll(submission, on_status=on_status)
             output_bytes = self.provider.download(final.output_url)
-        except HiggsfieldProviderError as exc:
+        except ProviderError as exc:
             current = self.store.get("generation_attempts", attempt["id"])
             if exc.code == "POLL_TIMEOUT" and current.get("provider_request_id"):
                 self.store.update(
@@ -1262,6 +1276,10 @@ class HiggsfieldGenerationWorker:
         return result
 
 
+# Backward-compatible worker name; execution accepts any provider adapter.
+HiggsfieldGenerationWorker = ProviderGenerationWorker
+
+
 RELEASE_CHECKS = (
     "TENANT_OWNERSHIP",
     "SERVER_SECRET_BOUNDARY",
@@ -1336,6 +1354,10 @@ class GenerationReleaseGate:
             },
         )
         render_qa = self.store.get("qa_runs", render_qa_run_id)
+        render = self.store.get("render_jobs", render_qa["render_job_id"])
+        timeline = self.store.get("composition_timelines", render["timeline_id"])
+        if timeline["campaign_id"] != request["campaign_id"]:
+            raise PermissionError("release QA belongs to another campaign")
         campaign = self.store.get("campaigns", request["campaign_id"])
         brand = _decode(request["brand_snapshot_json"], {})
         claims = _decode(request["business_claims_json"], [])

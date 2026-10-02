@@ -64,3 +64,29 @@ Batch 10 lock:
 - Artifact defects finalize FAIL; QA engine execution failures end ERROR with null result.
 - Batch 10 defines no WARN-producing rule.
 - QA cannot trigger render/retry/publishing actions.
+
+Multi-brand foundation lock (2026-09-30):
+- CreativeOS is brand-agnostic. HABI is ecosystem_key data inside a NATIVE organization; external brands receive no HABI defaults.
+- Organization -> Brand/Product -> Campaign is the ownership chain. All production/governance/cost rows inherit campaign/brand ownership.
+- Trusted hosts open an organization-and-brand-scoped CreativeOSStore for tenant work. Unscoped connections and raw SQL are internal administrative capabilities.
+- Legacy NULL-owned data stays local and cannot appear in scoped stores. Ownership is not inferred from brand names or historical tenant strings.
+- Ownership links cannot be reassigned beneath historical evidence; mixed campaign/brand links are rejected at the database boundary.
+- Creative Director resolves persisted Brand Brain; generation uses its campaign snapshot. Human approval and QA remain independent required export gates.
+- Async provider execution uses provider_contract.py. Higgsfield remains an adapter with compatibility aliases; a local test provider proves the complete flow.
+- v11 rollback refuses when organization data exists; failed migration scripts are atomic.
+- Scope excludes Agency Mode, publishing, performance ingestion and billing. No deployment was performed.
+
+## Authenticated scope lock - 2026-09-30
+
+- Schema v12 adds users, memberships, hashed sessions, context revisions and immutable adoption audit.
+- Network requests must use AuthService.request; never construct tenant authority from client IDs.
+- Membership/role, selected brand ownership and context revision are checked on every scoped request.
+- Local account/membership administration is CLI-only; no default credentials or public signup.
+- Server binds loopback and serves the production UI on the same origin. No public deployment.
+- Scope switching clears campaign, queue, QA, approval, cost, export/media and adoption-preview state.
+- Legacy ownership adoption is whole-brand, explicit, privileged, expiring, digest-checked and atomic.
+  Ambiguous/unbound records require investigation; source files are not moved or guessed.
+- Generation remains provider-neutral; the authenticated workspace currently enables labelled MOCK
+  previews, real FFmpeg/QA, human review and authenticated download. Recorded failures are retained.
+- Final gates: 136 backend + 13 frontend tests, lint, TypeScript, production build and two-user
+  Chromium acceptance PASS. See AUTHENTICATED_SCOPE.md for reproducible commands and limitations.

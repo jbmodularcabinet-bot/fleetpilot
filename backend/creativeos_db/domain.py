@@ -2,6 +2,15 @@ from dataclasses import dataclass
 
 
 @dataclass(frozen=True)
+class Organization:
+    id: str
+    name: str
+    slug: str
+    classification: str = "EXTERNAL"
+    ecosystem_key: str = ""
+
+
+@dataclass(frozen=True)
 class BrandProfile:
     id: str
     name: str
@@ -12,6 +21,8 @@ class BrandProfile:
     audience: str = ""
     tagline: str = ""
     default_immutable_ui: bool = False
+    organization_id: str | None = None
+    entity_type: str = "BRAND"
 
 
 @dataclass(frozen=True)
@@ -19,6 +30,7 @@ class Campaign:
     id: str
     brand_profile_id: str
     title: str
+    organization_id: str | None = None
 
 
 @dataclass(frozen=True)

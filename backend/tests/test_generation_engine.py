@@ -52,7 +52,7 @@ class GenerationEngineV1Tests(unittest.TestCase):
         self.tmp = tempfile.TemporaryDirectory()
         self.db = Path(self.tmp.name) / "creativeos.sqlite3"
         self.store = CreativeOSStore(self.db)
-        self.assertEqual(self.store.migrate_to_latest(), 10)
+        self.assertEqual(self.store.migrate_to_latest(), 13)
         self.brand = BrandBrainService(self.store).load_fleetpilot_fixture()
         self.campaign = self.store.create("campaigns", {
             "brand_profile_id": self.brand["id"],
@@ -214,7 +214,7 @@ class GenerationEngineV1Tests(unittest.TestCase):
     def test_v9_v10_rollback_reapply(self):
         request_id = self._draft()["id"]
         self.assertEqual(self.store.rollback_to(9), 9)
-        self.assertEqual(self.store.migrate_to_latest(), 10)
+        self.assertEqual(self.store.migrate_to_latest(), 13)
         with self.assertRaises(KeyError):
             self.store.get("generation_requests", request_id)
 
