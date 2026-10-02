@@ -16,7 +16,7 @@ class SaaSBridgeTests(unittest.TestCase):
         self.tmp = tempfile.TemporaryDirectory()
         self.db = Path(self.tmp.name) / "creativeos.sqlite3"
         self.store = CreativeOSStore(self.db)
-        self.assertEqual(self.store.migrate_to_latest(), 10)
+        self.assertEqual(self.store.migrate_to_latest(), 13)
         self.service = SaaSBridgeService(self.store)
 
     def tearDown(self):
