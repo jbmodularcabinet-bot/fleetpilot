@@ -128,8 +128,10 @@ test("owner Drivers compatibility route shows tenant roster, not driver app", as
   await expect(page.locator(".desktop-app")).toHaveCount(0);
   await page.goto(`/drivers/${driverId}`);
   await expect(page).toHaveURL(/\/driver$/);
+  await expect(page.getByRole("navigation", { name: "Driver navigation", exact: true })).toBeVisible();
   await page.screenshot({ path: "test-results/driver-role-preserved-320.png", fullPage: true });
 
+  await page.goto("/driver/profile");
   await page.getByRole("button", { name: "Sign out", exact: true }).click();
   await expect(page).toHaveURL(/\/login$/);
   await page.goto("/drivers");
