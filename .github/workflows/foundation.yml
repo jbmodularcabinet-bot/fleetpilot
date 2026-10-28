@@ -62,4 +62,16 @@ jobs:
       - run: npm run typecheck && npm run lint && npm test && npm run build
       - run: .venv/bin/python scripts/api-task.py --test tests.reset_e2e
       - run: npx playwright install --with-deps chromium
+      - name: Targeted owner Drivers route verification
+        run: FLEETPILOT_PRODUCTION_SMOKE=1 npm run test:e2e -- tests/e2e/owner-drivers-route.spec.ts
       - run: FLEETPILOT_PRODUCTION_SMOKE=1 npm run test:e2e
+      - name: Upload browser evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: browser-evidence
+          path: |
+            test-results/
+            playwright-report/
+          if-no-files-found: ignore
+
