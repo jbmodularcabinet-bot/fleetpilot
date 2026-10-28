@@ -104,7 +104,8 @@ test("owner Drivers compatibility route shows tenant roster, not driver app", as
   await expect(page.getByRole("link", { name: "View Pedro Reyes", exact: true })).toBeVisible();
 
   await page.goto("/drivers/not-a-valid-id");
-  await expect(page.getByRole("heading", { name: /404/ })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "This page is not available.", exact: true })).toBeVisible();
+  await expect(page.locator(".driver-app")).toHaveCount(0);
   await page.goto("/drivers/00000000-0000-0000-0000-000000000000");
   await expect(page.getByRole("alert").filter({ hasText: "Record not found" })).toBeVisible();
   expect(errors).toEqual([]);
