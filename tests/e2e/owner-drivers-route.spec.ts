@@ -54,6 +54,16 @@ test("owner Drivers compatibility route shows tenant roster, not driver app", as
   await expect(page).toHaveURL(/\/fleet\/drivers\/[0-9a-f-]+\?saved=1$/);
   const secondId = new URL(page.url()).pathname.split("/").at(-1)!;
   expect(secondId).not.toBe(driverId);
+  for (const [id, firstName, employee] of [
+    [driverId, "Maria", "DRV-001"],
+    [secondId, "Pedro", "DRV-002"],
+  ]) {
+    const response = await page.request.get(`/api/v1/drivers/${id}`);
+    expect(response.status()).toBe(200);
+    expect(await response.json()).toMatchObject({
+      id, first_name: firstName, employee_number: employee,
+    });
+  }
 
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
@@ -137,7 +147,7 @@ test("owner Drivers compatibility route shows tenant roster, not driver app", as
   await expect(page).toHaveURL(/\/dashboard$/);
   for (const id of [driverId, secondId]) {
     expect((await page.request.get(`/api/v1/drivers/${id}`)).status()).toBe(404);
-    expect((await page.request.get(`/api/v1/drivers/${id}/assignments`)).status()).toBe(404);
+    expect((await page.request.get(`/api/v1/vehicle-driver-assignments?driver_id=${id}`)).status()).toBe(404);
   }
   await page.goto("/drivers");
   await expect(page.getByText("No drivers yet", { exact: true })).toBeVisible();
